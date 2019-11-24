@@ -3,7 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/topLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="?attr/backgroundColor">
 
     <fragment
         android:id="@+id/status"
@@ -70,12 +71,6 @@
         </RelativeLayout>
 
     </RelativeLayout>
-
-    <TextureView
-        android:id="@+id/videoSurface"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" />
 
     <LinearLayout
         android:id="@+id/menu"

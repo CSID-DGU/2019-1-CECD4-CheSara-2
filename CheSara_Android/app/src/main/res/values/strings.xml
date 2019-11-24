@@ -2,19 +2,19 @@
 <resources>
 
     <!-- Custom -->
-    <string name="app_name">Che sara</string>
-    <string name="service_name">Che sara Service</string>
-    <string name="addressbook_label">Che sara</string>
-    <string name="notification_title">Che sara</string>
+    <string name="app_name">Linphone</string>
+    <string name="service_name">Linphone Service</string>
+    <string name="addressbook_label">Linphone</string>
+    <string name="notification_title">Linphone</string>
     <string name="wait_dialog_text">Starting up</string>
     <string name="notification_registered">%s connected</string>
     <string name="notification_register_failure">%s failed to connect</string>
     <string name="tunnel_host"></string>
-    <string name="about_version">Che sara Android %s</string>
-    <string name="about_liblinphone_version">Che sara Core %s</string>
-    <string name="about_liblinphone_sdk_version">Che sara SDK %s</string>
+    <string name="about_version">Linphone Android %s</string>
+    <string name="about_liblinphone_version">Linphone Core %s</string>
+    <string name="about_liblinphone_sdk_version">Linphone SDK %s</string>
     <string name="about_privacy_policy">Visit our privacy policy</string>
-    <string name="sync_account_name">Che sara contacts</string>
+    <string name="sync_account_name">linphone contacts</string>
 
     <!-- Notifications -->
     <string name="notification_reply_label">Reply</string>
@@ -72,7 +72,7 @@
     <!-- Assistant -->
     <string name="welcome">Welcome</string>
     <string name="assistant">Assistant</string>
-    <string name="assistant_create_account">My Page</string>
+    <string name="assistant_create_account">Create account</string>
     <string name="assistant_link_account">Link account</string>
     <string name="assistant_continue">Continue</string>
     <string name="assistant_activate">Activate your account</string>
@@ -80,12 +80,12 @@
     <string name="assistant_validate_account_1">Your account is created. Please check your mails to validate your account:</string>
     <string name="assistant_validate_account_2">Once it is done, come back here and click on the button.</string>
     <string name="assistant_welcome_desc">This assistant will help you configure and use your SIP account.</string>
-    <string name="assistant_linphone_login_desc">Please enter your username and password of Che sara account</string>
+    <string name="assistant_linphone_login_desc">Please enter your username and password of Linphone account</string>
     <string name="assistant_login_desc">Please enter your username and password with your SIP domain</string>
     <string name="assistant_remote_provisioning_desc">Please provide your provisioning URL</string>
     <string name="transport">Transport</string>
     <string name="assistant_create_account_phone_number_address">Your SIP address is</string>
-    <string name="assistant_login_linphone">Recorded Tape</string>
+    <string name="assistant_login_linphone">Use Linphone account</string>
     <string name="assistant_login_generic">Use SIP account</string>
     <string name="assistant_remote_provisioning">Fetch remote configuration</string>
     <string name="assistant_create_account_part_1">Please confirm your country code and enter your phone number</string>
@@ -93,7 +93,7 @@
     <string name="assistant_create_account_part_3">To complete your phone number verification, please enter the 4 digit code below:\n</string>
     <string name="assistant_create_account_part_email">Please enter an username, email and password for your Linphone account</string>
     <string name="assistant_display_name_optional">Display name (optional)</string>
-    <string name="assistant_linphone_account">Use your VoIP account</string>
+    <string name="assistant_linphone_account">Use your Linphone account</string>
     <string name="assistant_generic_account">Use SIP account</string>
     <string name="assistant_remote_provisioning_title">Fetch remote configuration</string>
     <string name="assistant_fetch_apply">Fetch and apply</string>
@@ -184,7 +184,7 @@
     <string name="contact_last_name">Last name</string>
     <string name="contact_organization">Organization</string>
     <string name="invite_friend">Invite</string>
-    <string name="invite_friend_text">Hello, join me on Che sara! You can download it for free at %s</string>
+    <string name="invite_friend_text">Hello, join me on Linphone! You can download it for free at %s</string>
     <string name="toast_choose_contact_for_edition">Select a contact or create a new one</string>
 
     <!-- Chat -->
@@ -254,6 +254,7 @@
     <string name="download_file">Download</string>
     <string name="toast_choose_chat_room_for_sharing">Select a conversation or create a new one</string>
     <string name="trust_denied">Trust has been denied. Make a call to start the authentication process again.</string>
+    <string name="cant_open_file_no_app_found">Can\'t open file, no application available for this format.</string>
 
     <!-- Status Bar -->
     <string name="status_connected">Connected</string>
@@ -300,7 +301,9 @@
     <string name="call_stats_jitter_buffer">Jitter buffer:</string>
     <string name="call_stats_encoder_name">Encoder:</string>
     <string name="call_stats_decoder_name">Decoder:</string>
+    <string name="call_stats_player_filter">Player filter:</string>
     <string name="call_stats_display_filter">Display filter:</string>
+    <string name="call_stats_capture_filter">Capture filter:</string>
     <string name="call">Call</string>
     <string name="call_log_delete_dialog">Do you want to delete the selected call logs?</string>
 
@@ -386,6 +389,9 @@
     <string name="pref_tunnel_title">Tunnel</string>
     <string name="pref_tunnel_host">Hostname</string>
     <string name="pref_tunnel_port">Port</string>
+    <string name="pref_tunnel_dual_mode">Enable dual mode</string>
+    <string name="pref_tunnel_host_2">Hostname (2nd server for dual mode)</string>
+    <string name="pref_tunnel_port_2">Port (2nd server for dual mode)</string>
     <string name="pref_tunnel_mode">Mode</string>
     <!--do not change order without changing corresponding entry_values in non_localizable_strings.xml-->
     <string-array name="tunnel_mode_entries">
@@ -416,6 +422,7 @@
 
     <!-- Video settings -->
     <string name="pref_video_title">Video</string>
+    <string name="pref_video_camera_device">Camera</string>
     <string name="pref_overlay">Video overlay</string>
     <string name="pref_overlay_summary">Display call video in overlay when outside the application</string>
     <string name="pref_video_use_front_camera_title">Use front camera</string>
@@ -435,6 +442,7 @@
     <string name="pref_contact_sync_subtitle">Inserting information shortcuts from the Linphone contact into native Android contacts</string>
     <string name="pref_contact_title">Contact</string>
     <string name="pref_contact_display_contact_organization_title">Display contact organization</string>
+    <string name="pref_create_contact_shortcuts">Create shortcuts in launcher</string>
 
     <!-- Call settings -->
     <string name="pref_call_title">Call</string>
@@ -466,6 +474,9 @@
     <string name="pref_auto_download_disabled">Never</string>
     <string name="pref_auto_download_always">Always</string>
     <string name="pref_auto_download_under_size">If lighter than max size</string>
+    <string name="pref_android_app_hide_empty_chat_rooms_title">Hide empty chat rooms</string>
+    <string name="pref_android_app_hide_chat_rooms_from_removed_proxies_title">Hide chat rooms from removed proxy configs</string>
+    <string name="pref_android_app_hide_chat_rooms_from_removed_proxies_desc">If you have missing chat rooms, try to uncheck this setting</string>
 
     <!-- Network settings -->
     <string name="pref_network_title">Network</string>
@@ -498,6 +509,7 @@
     <string name="pref_friendlist_subscribe">Friendlist subscribe</string>
     <string name="pref_background_mode">Background mode</string>
     <string name="pref_background_mode_desc">Show a notification to keep the app alive</string>
+    <string name="pref_background_mode_warning_desc">Linphone has been restricted for background usage, please authorize it first</string>
     <string name="pref_animation_enable_title">Enable Animations</string>
     <string name="pref_service_notification">Enable service notification</string>
     <string name="pref_autostart">Start at boot time</string>

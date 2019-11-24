@@ -1,23 +1,23 @@
-package org.linphone.history;
-
 /*
-HistoryDetailFragment.java
-Copyright (C) 2017  Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.history;
 
 import android.app.Fragment;
 import android.os.Bundle;
@@ -110,6 +110,9 @@ public class HistoryDetailFragment extends Fragment {
                     }
                 });
 
+        if (getResources().getBoolean(R.bool.force_end_to_end_encryption_in_chat)) {
+            chat.setVisibility(View.GONE);
+        }
         if (getResources().getBoolean(R.bool.disable_chat)) {
             chat.setVisibility(View.GONE);
             mChatSecured.setVisibility(View.GONE);
@@ -182,6 +185,7 @@ public class HistoryDetailFragment extends Fragment {
 
             Core core = LinphoneManager.getCore();
             if (address != null && core != null) {
+                address.clean();
                 ProxyConfig proxyConfig = core.getDefaultProxyConfig();
                 CallLog[] logs;
                 if (proxyConfig != null) {
@@ -197,6 +201,10 @@ public class HistoryDetailFragment extends Fragment {
                 mContactAddress.setText(LinphoneUtils.getDisplayableAddress(address));
                 mContact = ContactsManager.getInstance().findContactFromAddress(address);
 
+                if (mDisplayName == null) {
+                    mDisplayName = LinphoneUtils.getAddressDisplayName(address);
+                }
+
                 if (mContact != null) {
                     mContactName.setText(mContact.getFullName());
                     ContactAvatar.displayAvatar(mContact, mAvatarLayout);
@@ -205,16 +213,12 @@ public class HistoryDetailFragment extends Fragment {
 
                     if (!getResources().getBoolean(R.bool.disable_chat)
                             && mContact.hasPresenceModelForUriOrTelCapability(
-                                    mSipUri, FriendCapability.LimeX3Dh)) {
+                                    address.asStringUriOnly(), FriendCapability.LimeX3Dh)) {
                         mChatSecured.setVisibility(View.VISIBLE);
                     }
                 } else {
-                    mContactName.setText(
-                            mDisplayName == null
-                                    ? LinphoneUtils.getAddressDisplayName(mSipUri)
-                                    : mDisplayName);
-                    ContactAvatar.displayAvatar(
-                            LinphoneUtils.getAddressDisplayName(address), mAvatarLayout);
+                    mContactName.setText(mDisplayName);
+                    ContactAvatar.displayAvatar(mDisplayName, mAvatarLayout);
                     mAddToContacts.setVisibility(View.VISIBLE);
                     mGoToContact.setVisibility(View.GONE);
                 }

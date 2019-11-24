@@ -12,13 +12,13 @@
     <string name="download_link" translatable="false">https://linphone.org/download</string>
     <string name="recover_password_link" translatable="false">https://linphone.org/freesip/recover</string>
     <string name="about_privacy_policy_link" translatable="false">https://www.linphone.org/terms-and-privacy</string>
-    <string name="about_license_link" translatable="false">https://www.gnu.org/licenses/old-licenses/gpl-2.0.html</string>
+    <string name="about_license_link" translatable="false">https://www.gnu.org/licenses/gpl-3.0.html</string>
 
     <!-- Textual mention of the app name -->
     <string name="user_agent" translatable="false">LinphoneAndroid</string>
     <string name="temp_photo_name" translatable="false">linphone-android-photo-temp</string>
     <string name="temp_photo_name_with_date" translatable="false">linphone-android-photo-%s</string>
-    <string name="about_text" translatable="false">GNU General Public License V2\n © 2010–2019 Belledonne Communications</string>
+    <string name="about_text" translatable="false">GNU General Public License V3\n © 2010–2019 Belledonne Communications</string>
     <string name="about_bugreport_email" translatable="false">linphone-android@belledonne-communications.com</string>
     <string name="notification_service_channel_id" translatable="false">linphone_notification_service_id</string>
     <string name="notification_channel_id" translatable="false">linphone_notification_id</string>
@@ -93,9 +93,13 @@
     <bool name="send_multiple_images_as_different_messages">true</bool>
     <bool name="use_big_pictures_to_preview_images_file_transfers">true</bool>
     <bool name="show_sip_uri_in_chat">false</bool>
-    <bool name="hide_empty_one_to_one_chat_rooms">true</bool>
-    <bool name="create_most_recent_chat_rooms_shortcuts">true</bool>
     <bool name="force_end_to_end_encryption_in_chat">false</bool>
+
+    <!-- Shortcuts -->
+    <bool name="create_shortcuts">true</bool>
+    <!-- The below two settings are mutually exclusive -->
+    <bool name="shortcut_to_contact">true</bool>
+    <bool name="shortcut_to_chatroom">false</bool>
 
     <!-- Contacts -->
     <bool name="hide_contact_phone_numbers">false</bool>
@@ -111,6 +115,7 @@
     <bool name="hide_invite_contact">false</bool>
     <bool name="generate_text_avatar">true</bool>
     <bool name="only_show_address_username_if_matches_default_domain">true</bool>
+    <bool name="fetch_contacts_from_default_directory">true</bool> <!-- Recommended -->
 
     <!-- Side Menu -->
     <bool name="hide_assistant_from_side_menu">false</bool>

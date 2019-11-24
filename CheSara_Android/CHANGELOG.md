@@ -13,11 +13,24 @@ Group changes to describe their impact on the project, as follows:
 ## [Unreleased]
 
 ### Added
-- Added shortcuts to calls history & chat rooms list
+- Added shortcuts to contacts' latest chat rooms
 - Improved device's do not disturb policy compliance
 - Added sample application to help developpers getting started with our SDK
 - Added picture in picture feature if supported instead of video overlay
 - Added camera preview as dialer's background on tablets
+- Contact section in the settings
+- Using new AAudio & Camera2 frameworks for better performances (if available)
+- Android 10 compatibility
+- New plugin loader to be compatible with app bundle distribution mode
+
+## Changed
+- Improved performances to reduce startup time
+- Call statistics are now available for each call & conference
+- Added our own devices in LIME encrypted chatrooms' security view
+- No longer display incoming call activity from Service, instead use incoming call notification with full screen intent
+- Improved reply notification when replying to a chat message from the notification
+- License changed from GPLv2 to GPLv3
+- Switched from MD5 to SHA-256 as password protection algorithm
 
 ## [4.1.0] - 2019-05-03
 

@@ -1,23 +1,23 @@
-package org.linphone;
-
 /*
-LinphoneManager.java
-Copyright (C) 2018 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -32,7 +32,6 @@ import android.hardware.SensorManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.os.Handler;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.telephony.PhoneStateListener;
@@ -50,7 +49,6 @@ import org.linphone.call.CallManager;
 import org.linphone.contacts.ContactsManager;
 import org.linphone.core.AccountCreator;
 import org.linphone.core.AccountCreatorListenerStub;
-import org.linphone.core.BuildConfig;
 import org.linphone.core.Call;
 import org.linphone.core.Call.State;
 import org.linphone.core.ConfiguringState;
@@ -69,8 +67,6 @@ import org.linphone.core.TunnelConfig;
 import org.linphone.core.VersionUpdateCheckResult;
 import org.linphone.core.tools.H264Helper;
 import org.linphone.core.tools.Log;
-import org.linphone.mediastream.video.capture.hwconf.AndroidCameraConfiguration;
-import org.linphone.mediastream.video.capture.hwconf.AndroidCameraConfiguration.AndroidCamera;
 import org.linphone.settings.LinphonePreferences;
 import org.linphone.utils.AndroidAudioManager;
 import org.linphone.utils.LinphoneUtils;
@@ -96,8 +92,7 @@ public class LinphoneManager implements SensorEventListener {
     private final SensorManager mSensorManager;
     private final Sensor mProximity;
     private final MediaScanner mMediaScanner;
-    private Timer mTimer;
-    private final Handler mHandler = new Handler();
+    private Timer mTimer, mAutoAnswerTimer;
 
     private final LinphonePreferences mPrefs;
     private Core mCore;
@@ -109,6 +104,7 @@ public class LinphoneManager implements SensorEventListener {
     private boolean mCallGsmON;
     private boolean mProximitySensingEnabled;
     private boolean mHasLastCallSasBeenRejected;
+    private Runnable mIterateRunnable;
 
     public LinphoneManager(Context c) {
         mExited = false;
@@ -146,6 +142,10 @@ public class LinphoneManager implements SensorEventListener {
                         }
                     }
                 };
+
+        Log.i("[Manager] Registering phone state listener");
+        mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+
         mHasLastCallSasBeenRejected = false;
         mCallManager = new CallManager(c);
 
@@ -227,16 +227,12 @@ public class LinphoneManager implements SensorEventListener {
                                             }
                                         }
                                     };
-                            mTimer = new Timer("Auto answer");
-                            mTimer.schedule(lTask, mPrefs.getAutoAnswerTime());
+                            mAutoAnswerTimer = new Timer("Auto answer");
+                            mAutoAnswerTimer.schedule(lTask, mPrefs.getAutoAnswerTime());
                         } else if (state == State.End || state == State.Error) {
                             if (mCore.getCallsNb() == 0) {
                                 // Disabling proximity sensor
                                 enableProximitySensing(false);
-
-                                Log.i("[Manager] Unregistering phone state listener");
-                                mTelephonyManager.listen(
-                                        mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
                             }
                         } else if (state == State.UpdatedByRemote) {
                             // If the correspondent proposes video while audio call
@@ -251,12 +247,6 @@ public class LinphoneManager implements SensorEventListener {
                                     && mCore.getConference() == null) {
                                 call.deferUpdate();
                             }
-                        } else if (state == State.Connected) {
-                            if (core.getCallsNb() == 1) {
-                                Log.i("[Manager] Registering phone state listener");
-                                mTelephonyManager.listen(
-                                        mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
-                            }
                         }
                     }
 
@@ -269,7 +259,7 @@ public class LinphoneManager implements SensorEventListener {
                         if (result == VersionUpdateCheckResult.NewVersionAvailable) {
                             final String urlToUse = url;
                             final String versionAv = version;
-                            mHandler.postDelayed(
+                            LinphoneUtils.dispatchOnUIThreadAfter(
                                     new Runnable() {
                                         @Override
                                         public void run() {
@@ -306,7 +296,7 @@ public class LinphoneManager implements SensorEventListener {
 
                     @Override
                     public void onFriendListCreated(Core core, FriendList list) {
-                        if (LinphoneService.isReady()) {
+                        if (LinphoneContext.isReady()) {
                             list.addListener(ContactsManager.getInstance());
                         }
                     }
@@ -352,7 +342,7 @@ public class LinphoneManager implements SensorEventListener {
     }
 
     public static synchronized LinphoneManager getInstance() {
-        LinphoneManager manager = LinphoneService.instance().getLinphoneManager();
+        LinphoneManager manager = LinphoneContext.instance().getLinphoneManager();
         if (manager == null) {
             throw new RuntimeException(
                     "[Manager] Linphone Manager should be created before accessed");
@@ -421,16 +411,20 @@ public class LinphoneManager implements SensorEventListener {
         Log.w("[Manager] Destroying Manager");
         changeStatusToOffline();
 
-        mCallManager.destroy();
-        mMediaScanner.destroy();
-        mAudioManager.destroy();
+        if (mTelephonyManager != null) {
+            Log.i("[Manager] Unregistering phone state listener");
+            mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
+        }
 
-        try {
-            mTimer.cancel();
+        if (mCallManager != null) mCallManager.destroy();
+        if (mMediaScanner != null) mMediaScanner.destroy();
+        if (mAudioManager != null) mAudioManager.destroy();
+
+        if (mTimer != null) mTimer.cancel();
+        if (mAutoAnswerTimer != null) mAutoAnswerTimer.cancel();
+
+        if (mCore != null) {
             destroyCore();
-        } catch (RuntimeException e) {
-            Log.e("[Manager] Destroy Core Runtime Exception: " + e);
-        } finally {
             mCore = null;
         }
     }
@@ -444,25 +438,29 @@ public class LinphoneManager implements SensorEventListener {
                                     mPrefs.getLinphoneFactoryConfig(),
                                     mContext);
             mCore.addListener(mCoreListener);
+
             if (isPush) {
                 Log.w(
                         "[Manager] We are here because of a received push notification, enter background mode before starting the Core");
                 mCore.enterBackground();
             }
+
             mCore.start();
+
+            mIterateRunnable =
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            if (mCore != null) {
+                                mCore.iterate();
+                            }
+                        }
+                    };
             TimerTask lTask =
                     new TimerTask() {
                         @Override
                         public void run() {
-                            LinphoneUtils.dispatchOnUIThread(
-                                    new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            if (mCore != null) {
-                                                mCore.iterate();
-                                            }
-                                        }
-                                    });
+                            LinphoneUtils.dispatchOnUIThread(mIterateRunnable);
                         }
                     };
             /*use schedule instead of scheduleAtFixedRate to avoid iterate from being call in burst after cpu wake up*/
@@ -484,7 +482,7 @@ public class LinphoneManager implements SensorEventListener {
 
         String deviceName = mPrefs.getDeviceName(mContext);
         String appName = mContext.getResources().getString(R.string.user_agent);
-        String androidVersion = BuildConfig.VERSION_NAME;
+        String androidVersion = org.linphone.BuildConfig.VERSION_NAME;
         String userAgent = appName + "/" + androidVersion + " (" + deviceName + ") LinphoneSDK";
 
         mCore.setUserAgent(
@@ -523,7 +521,7 @@ public class LinphoneManager implements SensorEventListener {
 
                 if (mCore.limeX3DhAvailable()) {
                     String url = mCore.getLimeX3DhServerUrl();
-                    if (url == null || url.length() == 0) {
+                    if (url == null || url.isEmpty()) {
                         url = getString(R.string.default_lime_x3dh_server_url);
                         Log.i("[Manager] Setting LIME X3Dh server url to default value: " + url);
                         mCore.setLimeX3DhServerUrl(url);
@@ -548,24 +546,28 @@ public class LinphoneManager implements SensorEventListener {
         mCallGsmON = false;
     }
 
-    private void resetCameraFromPreferences() {
-        boolean useFrontCam = mPrefs.useFrontCam();
-        int camId = 0;
-        AndroidCamera[] cameras = AndroidCameraConfiguration.retrieveCameras();
-        for (AndroidCamera androidCamera : cameras) {
-            if (androidCamera.frontFacing == useFrontCam) {
-                camId = androidCamera.id;
-                break;
+    public void resetCameraFromPreferences() {
+        Core core = getCore();
+        if (core == null) return;
+
+        boolean useFrontCam = LinphonePreferences.instance().useFrontCam();
+        String firstDevice = null;
+        for (String camera : core.getVideoDevicesList()) {
+            if (firstDevice == null) {
+                firstDevice = camera;
+            }
+
+            if (useFrontCam) {
+                if (camera.contains("Front")) {
+                    Log.i("[Manager] Found front facing camera: " + camera);
+                    core.setVideoDevice(camera);
+                    return;
+                }
             }
         }
-        String[] devices = mCore.getVideoDevicesList();
-        if (camId >= devices.length) {
-            Log.e(
-                    "[Manager] Trying to use a camera id that's higher than the linphone's devices list, using 0 to prevent crash...");
-            camId = 0;
-        }
-        String newDevice = devices[camId];
-        mCore.setVideoDevice(newDevice);
+
+        Log.i("[Manager] Using first camera available: " + firstDevice);
+        core.setVideoDevice(firstDevice);
     }
 
     /* Account linking */
@@ -593,6 +595,10 @@ public class LinphoneManager implements SensorEventListener {
         if (LinphonePreferences.instance().getLinkPopupTime() != null
                 && Long.parseLong(LinphonePreferences.instance().getLinkPopupTime()) >= now) return;
 
+        ProxyConfig proxyConfig = mCore.getDefaultProxyConfig();
+        if (proxyConfig == null) return;
+        if (!proxyConfig.getDomain().equals(getString(R.string.default_domain))) return;
+
         long future =
                 new Timestamp(
                                 mContext.getResources()
@@ -608,9 +614,7 @@ public class LinphoneManager implements SensorEventListener {
                         mContext,
                         String.format(
                                 getString(R.string.link_account_popup),
-                                mCore.getDefaultProxyConfig()
-                                        .getIdentityAddress()
-                                        .asStringUriOnly()));
+                                proxyConfig.getIdentityAddress().asStringUriOnly()));
         Button delete = dialog.findViewById(R.id.dialog_delete_button);
         delete.setVisibility(View.GONE);
         Button ok = dialog.findViewById(R.id.dialog_ok_button);

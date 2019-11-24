@@ -1,23 +1,23 @@
-package org.linphone.utils;
-
 /*
-AndroidAudioManager.java
-Copyright (C) 2019 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.utils;
 
 import static android.media.AudioManager.MODE_RINGTONE;
 import static android.media.AudioManager.STREAM_RING;
@@ -65,6 +65,7 @@ public class AndroidAudioManager {
     private BluetoothHeadset mBluetoothHeadset;
     private BluetoothReceiver mBluetoothReceiver;
     private HeadsetReceiver mHeadsetReceiver;
+    private boolean mHeadsetReceiverRegistered;
 
     private boolean mIsRinging;
     private boolean mAudioFocused;
@@ -79,6 +80,7 @@ public class AndroidAudioManager {
         mAudioManager = ((AudioManager) context.getSystemService(Context.AUDIO_SERVICE));
         mVibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
         mEchoTesterIsRunning = false;
+        mHeadsetReceiverRegistered = false;
 
         startBluetooth();
 
@@ -131,6 +133,7 @@ public class AndroidAudioManager {
                                     }
                                 }
                                 // Only register this one when a call is active
+
                                 enableHeadsetReceiver();
                             }
                         } else if (state == Call.State.End || state == Call.State.Error) {
@@ -148,9 +151,10 @@ public class AndroidAudioManager {
                                 }
 
                                 // Only register this one when a call is active
-                                if (mHeadsetReceiver != null) {
+                                if (mHeadsetReceiver != null && mHeadsetReceiverRegistered) {
                                     Log.i("[Audio Manager] Unregistering headset receiver");
                                     mContext.unregisterReceiver(mHeadsetReceiver);
+                                    mHeadsetReceiverRegistered = false;
                                 }
 
                                 TelephonyManager tm =
@@ -204,11 +208,11 @@ public class AndroidAudioManager {
         if (mBluetoothAdapter != null && mBluetoothHeadset != null) {
             Log.i("[Audio Manager] [Bluetooth] Closing HEADSET profile proxy");
             mBluetoothAdapter.closeProfileProxy(BluetoothProfile.HEADSET, mBluetoothHeadset);
+        }
 
-            Log.i("[Audio Manager] [Bluetooth] Unegistering bluetooth receiver");
-            if (mBluetoothReceiver != null) {
-                mContext.unregisterReceiver(mBluetoothReceiver);
-            }
+        Log.i("[Audio Manager] [Bluetooth] Unegistering bluetooth receiver");
+        if (mBluetoothReceiver != null) {
+            mContext.unregisterReceiver(mBluetoothReceiver);
         }
 
         Core core = LinphoneManager.getCore();
@@ -533,21 +537,16 @@ public class AndroidAudioManager {
                                     Log.i(
                                             "[Audio Manager] [Bluetooth] Registering bluetooth receiver");
 
-                                    mContext.registerReceiver(
-                                            mBluetoothReceiver,
-                                            new IntentFilter(
-                                                    BluetoothHeadset
-                                                            .ACTION_CONNECTION_STATE_CHANGED));
-                                    mContext.registerReceiver(
-                                            mBluetoothReceiver,
-                                            new IntentFilter(
-                                                    BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED));
+                                    IntentFilter filter = new IntentFilter();
+                                    filter.addAction(BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED);
+                                    filter.addAction(
+                                            BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED);
+                                    filter.addAction(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED);
+                                    filter.addAction(
+                                            BluetoothHeadset.ACTION_VENDOR_SPECIFIC_HEADSET_EVENT);
+
                                     Intent sticky =
-                                            mContext.registerReceiver(
-                                                    mBluetoothReceiver,
-                                                    new IntentFilter(
-                                                            AudioManager
-                                                                    .ACTION_SCO_AUDIO_STATE_UPDATED));
+                                            mContext.registerReceiver(mBluetoothReceiver, filter);
                                     int state =
                                             sticky.getIntExtra(
                                                     AudioManager.EXTRA_SCO_AUDIO_STATE,
@@ -600,5 +599,6 @@ public class AndroidAudioManager {
                 mHeadsetReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
         mContext.registerReceiver(
                 mHeadsetReceiver, new IntentFilter(AudioManager.ACTION_HEADSET_PLUG));
+        mHeadsetReceiverRegistered = true;
     }
 }

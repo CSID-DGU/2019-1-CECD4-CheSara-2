@@ -1,23 +1,23 @@
-package org.linphone.contacts;
-
 /*
-AsyncContactsLoader.java
-Copyright (C) 2018  Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.contacts;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import org.linphone.LinphoneManager;
 import org.linphone.R;
+import org.linphone.compatibility.Compatibility;
 import org.linphone.core.Core;
 import org.linphone.core.Friend;
 import org.linphone.core.FriendList;
@@ -77,12 +78,19 @@ class AsyncContactsLoader extends AsyncTask<Void, Void, AsyncContactsLoader.Asyn
     @Override
     protected AsyncContactsData doInBackground(Void... params) {
         Log.i("[Contacts Manager] Background synchronization started");
+
+        String selection = null;
+        if (mContext.getResources().getBoolean(R.bool.fetch_contacts_from_default_directory)) {
+            Log.i("[Contacts Manager] Only fetching contacts in default directory");
+            selection = ContactsContract.Data.IN_DEFAULT_DIRECTORY + " == 1";
+        }
+
         Cursor c =
                 mContext.getContentResolver()
                         .query(
                                 ContactsContract.Data.CONTENT_URI,
                                 PROJECTION,
-                                ContactsContract.Data.IN_DEFAULT_DIRECTORY + " == 1",
+                                selection,
                                 null,
                                 null);
 
@@ -140,6 +148,11 @@ class AsyncContactsLoader extends AsyncTask<Void, Void, AsyncContactsLoader.Asyn
 
                 LinphoneContact contact = androidContactsCache.get(id);
                 if (contact == null) {
+                    Log.d(
+                            "[Contacts Manager] Creating LinphoneContact with native ID "
+                                    + id
+                                    + ", favorite flag is "
+                                    + starred);
                     nativeIds.add(id);
                     contact = new LinphoneContact();
                     contact.setAndroidId(id);
@@ -181,6 +194,9 @@ class AsyncContactsLoader extends AsyncTask<Void, Void, AsyncContactsLoader.Asyn
                 Log.w("[Contacts Manager] Task cancelled");
                 return data;
             }
+            if (contact.getNumbersOrAddresses().isEmpty()) {
+                continue;
+            }
 
             if (contact.getFullName() == null) {
                 for (LinphoneNumberOrAddress noa : contact.getNumbersOrAddresses()) {
@@ -211,6 +227,7 @@ class AsyncContactsLoader extends AsyncTask<Void, Void, AsyncContactsLoader.Asyn
                     data.sipContacts.add(contact);
                 }
             }
+
             data.contacts.add(contact);
         }
 
@@ -253,6 +270,8 @@ class AsyncContactsLoader extends AsyncTask<Void, Void, AsyncContactsLoader.Asyn
                 ContactsManager.getInstance().getContactsListeners()) {
             listener.onContactsUpdated();
         }
+
+        Compatibility.createChatShortcuts(mContext);
         Log.i("[Contacts Manager] Synchronization finished");
     }
 

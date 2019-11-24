@@ -1,23 +1,23 @@
-package org.linphone.settings;
-
 /*
-ChatSettingsFragment.java
-Copyright (C) 2019 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.settings;
 
 import android.content.Context;
 import android.content.Intent;
@@ -35,6 +35,7 @@ import org.linphone.mediastream.Version;
 import org.linphone.settings.widget.BasicSetting;
 import org.linphone.settings.widget.ListSetting;
 import org.linphone.settings.widget.SettingListenerBase;
+import org.linphone.settings.widget.SwitchSetting;
 import org.linphone.settings.widget.TextSetting;
 
 public class ChatSettingsFragment extends SettingsFragment {
@@ -43,6 +44,7 @@ public class ChatSettingsFragment extends SettingsFragment {
     private TextSetting mSharingServer, mMaxSizeForAutoDownloadIncomingFiles;
     private BasicSetting mAndroidNotificationSettings;
     private ListSetting mAutoDownloadIncomingFilesPolicy;
+    private SwitchSetting mHideEmptyRooms, mHideRemovedProxiesRooms;
 
     @Nullable
     @Override
@@ -74,6 +76,11 @@ public class ChatSettingsFragment extends SettingsFragment {
         mAutoDownloadIncomingFilesPolicy = mRootView.findViewById(R.id.pref_auto_download_policy);
 
         mAndroidNotificationSettings = mRootView.findViewById(R.id.pref_android_app_notif_settings);
+
+        mHideEmptyRooms = mRootView.findViewById(R.id.pref_android_app_hide_empty_chat_rooms);
+
+        mHideRemovedProxiesRooms =
+                mRootView.findViewById(R.id.pref_android_app_hide_chat_rooms_from_removed_proxies);
     }
 
     private void setListeners() {
@@ -131,6 +138,22 @@ public class ChatSettingsFragment extends SettingsFragment {
                         }
                     }
                 });
+
+        mHideEmptyRooms.setListener(
+                new SettingListenerBase() {
+                    @Override
+                    public void onBoolValueChanged(boolean newValue) {
+                        LinphonePreferences.instance().setHideEmptyChatRooms(newValue);
+                    }
+                });
+
+        mHideRemovedProxiesRooms.setListener(
+                new SettingListenerBase() {
+                    @Override
+                    public void onBoolValueChanged(boolean newValue) {
+                        LinphonePreferences.instance().setHideRemovedProxiesChatRooms(newValue);
+                    }
+                });
     }
 
     private void updateValues() {
@@ -141,6 +164,11 @@ public class ChatSettingsFragment extends SettingsFragment {
         if (Version.sdkStrictlyBelow(Version.API26_O_80)) {
             mAndroidNotificationSettings.setVisibility(View.GONE);
         }
+
+        mHideEmptyRooms.setChecked(LinphonePreferences.instance().hideEmptyChatRooms());
+
+        mHideRemovedProxiesRooms.setChecked(
+                LinphonePreferences.instance().hideRemovedProxiesChatRooms());
 
         setListeners();
     }

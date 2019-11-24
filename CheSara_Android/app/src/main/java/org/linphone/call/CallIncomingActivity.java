@@ -1,28 +1,27 @@
-package org.linphone.call;
-
 /*
-CallIncomingActivity.java
-Copyright (C) 2017 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.call;
 
 import android.Manifest;
 import android.app.KeyguardManager;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -33,8 +32,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.core.app.ActivityCompat;
 import java.util.ArrayList;
+import org.linphone.LinphoneContext;
 import org.linphone.LinphoneManager;
-import org.linphone.LinphoneService;
 import org.linphone.R;
 import org.linphone.activities.LinphoneGenericActivity;
 import org.linphone.compatibility.Compatibility;
@@ -63,9 +62,6 @@ public class CallIncomingActivity extends LinphoneGenericActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (mAbortCreation) {
-            return;
-        }
 
         Compatibility.setShowWhenLocked(this, true);
         Compatibility.setTurnScreenOn(this, true);
@@ -124,14 +120,25 @@ public class CallIncomingActivity extends LinphoneGenericActivity {
                     @Override
                     public void onCallStateChanged(
                             Core core, Call call, State state, String message) {
-                        if (call == mCall && State.End == state) {
+                        if (call == mCall) {
+                            if (state == State.Connected) {
+                                // This is done by the Service listener now
+                                // startActivity(new Intent(CallOutgoingActivity.this,
+                                // CallActivity.class));
+                            }
+                        }
+
+                        if (LinphoneManager.getCore().getCallsNb() == 0) {
                             finish();
-                        } else if (state == State.Connected) {
-                            startActivity(
-                                    new Intent(CallIncomingActivity.this, CallActivity.class));
                         }
                     }
                 };
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        checkAndRequestCallPermissions();
     }
 
     @Override
@@ -175,12 +182,6 @@ public class CallIncomingActivity extends LinphoneGenericActivity {
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
-        checkAndRequestCallPermissions();
-    }
-
-    @Override
     protected void onPause() {
         Core core = LinphoneManager.getCore();
         if (core != null) {
@@ -190,8 +191,19 @@ public class CallIncomingActivity extends LinphoneGenericActivity {
     }
 
     @Override
+    protected void onDestroy() {
+        mName = null;
+        mNumber = null;
+        mCall = null;
+        mListener = null;
+        mVideoDisplay = null;
+
+        super.onDestroy();
+    }
+
+    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (LinphoneService.isReady()
+        if (LinphoneContext.isReady()
                 && (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_HOME)) {
             mCall.terminate();
             finish();
@@ -218,7 +230,6 @@ public class CallIncomingActivity extends LinphoneGenericActivity {
         mAlreadyAcceptedOrDeniedCall = true;
 
         mCall.terminate();
-        finish();
     }
 
     private void answer() {

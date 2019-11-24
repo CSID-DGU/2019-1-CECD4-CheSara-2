@@ -1,23 +1,23 @@
-package org.linphone.chat;
-
 /*
-GroupInfoAdapter.java
-Copyright (C) 2017 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.chat;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -26,7 +26,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
-import org.linphone.LinphoneService;
+import org.linphone.LinphoneContext;
 import org.linphone.R;
 import org.linphone.contacts.ContactAddress;
 import org.linphone.contacts.LinphoneContact;
@@ -73,7 +73,10 @@ class GroupInfoAdapter extends RecyclerView.Adapter<GroupInfoViewHolder> {
 
         holder.sipUri.setText(ca.getAddressAsDisplayableString());
 
-        if (!LinphoneService.instance().getResources().getBoolean(R.bool.show_sip_uri_in_chat)) {
+        if (!LinphoneContext.instance()
+                .getApplicationContext()
+                .getResources()
+                .getBoolean(R.bool.show_sip_uri_in_chat)) {
             holder.sipUri.setVisibility(View.GONE);
             holder.name.setOnClickListener(
                     new View.OnClickListener() {

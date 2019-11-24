@@ -1,23 +1,23 @@
-package org.linphone.call;
-
 /*
-CallActivity.java
-Copyright (C) 2017 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.call;
 
 import android.Manifest;
 import android.app.Dialog;
@@ -28,7 +28,6 @@ import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.os.Handler;
 import android.os.SystemClock;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -48,6 +47,7 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import java.lang.ref.WeakReference;
 import org.linphone.LinphoneManager;
 import org.linphone.LinphoneService;
 import org.linphone.R;
@@ -70,7 +70,6 @@ import org.linphone.settings.LinphonePreferences;
 import org.linphone.utils.AndroidAudioManager;
 import org.linphone.utils.LinphoneUtils;
 import org.linphone.views.ContactAvatar;
-import org.linphone.views.Numpad;
 
 public class CallActivity extends LinphoneGenericActivity
         implements CallStatusBarFragment.StatsClikedListener,
@@ -84,20 +83,27 @@ public class CallActivity extends LinphoneGenericActivity
     private static final int WRITE_EXTERNAL_STORAGE_FOR_RECORDING = 2;
     private static final int CAMERA_TO_ACCEPT_UPDATE = 3;
 
-    private Handler mHandler = new Handler();
-    private Runnable mHideControlsRunnable =
-            new Runnable() {
-                @Override
-                public void run() {
-                    // Make sure that at the time this is executed this is still required
-                    Call call = mCore.getCurrentCall();
-                    if (call != null && call.getCurrentParams().videoEnabled()) {
-                        updateButtonsVisibility(false);
-                    }
-                }
-            };
+    private static class HideControlsRunnable implements Runnable {
+        private WeakReference<CallActivity> mWeakCallActivity;
 
-    private int mPreviewX, mPreviewY;
+        public HideControlsRunnable(CallActivity activity) {
+            mWeakCallActivity = new WeakReference<>(activity);
+        }
+
+        @Override
+        public void run() {
+            // Make sure that at the time this is executed this is still required
+            Call call = LinphoneManager.getCore().getCurrentCall();
+            if (call != null && call.getCurrentParams().videoEnabled()) {
+                CallActivity activity = mWeakCallActivity.get();
+                if (activity != null) activity.updateButtonsVisibility(false);
+            }
+        }
+    }
+
+    private final HideControlsRunnable mHideControlsRunnable = new HideControlsRunnable(this);
+
+    private float mPreviewX, mPreviewY;
     private TextureView mLocalPreview, mRemoteVideo;
     private RelativeLayout mButtons,
             mActiveCalls,
@@ -109,7 +115,6 @@ public class CallActivity extends LinphoneGenericActivity
     private ImageView mPause, mSwitchCamera, mRecordingInProgress;
     private ImageView mExtrasButtons, mAddCall, mTransferCall, mRecordCall, mConference;
     private ImageView mAudioRoute, mRouteEarpiece, mRouteSpeaker, mRouteBluetooth;
-    private Numpad mNumpad;
     private TextView mContactName, mMissedMessages;
     private ProgressBar mVideoInviteInProgress;
     private Chronometer mCallTimer;
@@ -125,9 +130,6 @@ public class CallActivity extends LinphoneGenericActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (mAbortCreation) {
-            return;
-        }
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         Compatibility.setShowWhenLocked(this, true);
@@ -139,8 +141,7 @@ public class CallActivity extends LinphoneGenericActivity
                 new View.OnTouchListener() {
                     @Override
                     public boolean onTouch(View v, MotionEvent event) {
-                        moveLocalPreview(event);
-                        return true;
+                        return moveLocalPreview(v, event);
                     }
                 });
 
@@ -300,15 +301,16 @@ public class CallActivity extends LinphoneGenericActivity
                     }
                 });
 
-        mNumpad = findViewById(R.id.numpad);
-
         ImageView numpadButton = findViewById(R.id.dialer);
         numpadButton.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        mNumpad.setVisibility(
-                                mNumpad.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+                        findViewById(R.id.numpad)
+                                .setVisibility(
+                                        findViewById(R.id.numpad).getVisibility() == View.VISIBLE
+                                                ? View.GONE
+                                                : View.VISIBLE);
                     }
                 });
 
@@ -422,6 +424,27 @@ public class CallActivity extends LinphoneGenericActivity
                         updateCallsList();
                     }
                 };
+
+        mCore = LinphoneManager.getCore();
+        if (mCore != null) {
+            boolean recordAudioPermissionGranted =
+                    checkPermission(Manifest.permission.RECORD_AUDIO);
+            if (!recordAudioPermissionGranted) {
+                Log.w("[Call Activity] RECORD_AUDIO permission denied, muting microphone");
+                mCore.enableMic(false);
+            }
+
+            Call call = mCore.getCurrentCall();
+            boolean videoEnabled =
+                    LinphonePreferences.instance().isVideoEnabled()
+                            && call.getCurrentParams().videoEnabled();
+
+            if (videoEnabled) {
+                mAudioManager = LinphoneManager.getAudioManager();
+                mAudioManager.routeAudioToSpeaker();
+                mSpeaker.setSelected(true);
+            }
+        }
     }
 
     @Override
@@ -485,9 +508,51 @@ public class CallActivity extends LinphoneGenericActivity
             core.setNativeVideoWindowId(null);
             core.setNativePreviewWindowId(null);
         }
+
         if (mZoomHelper != null) {
             mZoomHelper.destroy();
+            mZoomHelper = null;
         }
+        if (mCallUpdateCountDownTimer != null) {
+            mCallUpdateCountDownTimer.cancel();
+            mCallUpdateCountDownTimer = null;
+        }
+
+        mCallTimer.stop();
+        mCallTimer = null;
+
+        mListener = null;
+        mLocalPreview = null;
+        mRemoteVideo = null;
+        mStatsFragment = null;
+
+        mButtons = null;
+        mActiveCalls = null;
+        mContactAvatar = null;
+        mActiveCallHeader = null;
+        mConferenceHeader = null;
+        mCallsList = null;
+        mCallPausedByRemote = null;
+        mConferenceList = null;
+        mMicro = null;
+        mSpeaker = null;
+        mVideo = null;
+        mPause = null;
+        mSwitchCamera = null;
+        mRecordingInProgress = null;
+        mExtrasButtons = null;
+        mAddCall = null;
+        mTransferCall = null;
+        mRecordCall = null;
+        mConference = null;
+        mAudioRoute = null;
+        mRouteEarpiece = null;
+        mRouteSpeaker = null;
+        mRouteBluetooth = null;
+        mContactName = null;
+        mMissedMessages = null;
+        mVideoInviteInProgress = null;
+        mCallUpdateDialog = null;
 
         super.onDestroy();
     }
@@ -588,8 +653,9 @@ public class CallActivity extends LinphoneGenericActivity
 
     @Override
     public void resetCallControlsHidingTimer() {
-        mHandler.removeCallbacks(mHideControlsRunnable);
-        mHandler.postDelayed(mHideControlsRunnable, SECONDS_BEFORE_HIDING_CONTROLS);
+        LinphoneUtils.removeFromUIThreadDispatcher(mHideControlsRunnable);
+        LinphoneUtils.dispatchOnUIThreadAfter(
+                mHideControlsRunnable, SECONDS_BEFORE_HIDING_CONTROLS);
     }
 
     // BUTTONS
@@ -603,8 +669,6 @@ public class CallActivity extends LinphoneGenericActivity
     private void updateButtons() {
         Call call = mCore.getCurrentCall();
 
-        boolean recordAudioPermissionGranted = checkPermission(Manifest.permission.RECORD_AUDIO);
-        mCore.enableMic(recordAudioPermissionGranted);
         mMicro.setSelected(!mCore.micEnabled());
 
         mSpeaker.setSelected(mAudioManager.isAudioRoutedToSpeaker());
@@ -721,8 +785,8 @@ public class CallActivity extends LinphoneGenericActivity
 
     private void updateButtonsVisibility(boolean visible) {
         findViewById(R.id.status_bar_fragment).setVisibility(visible ? View.VISIBLE : View.GONE);
-        mActiveCalls.setVisibility(visible ? View.VISIBLE : View.GONE);
-        mButtons.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (mActiveCalls != null) mActiveCalls.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (mButtons != null) mButtons.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
     private void makeButtonsVisibleTemporary() {
@@ -742,7 +806,7 @@ public class CallActivity extends LinphoneGenericActivity
         LinphoneManager.getInstance().enableProximitySensing(!videoEnabled);
 
         if (!videoEnabled) {
-            mHandler.removeCallbacks(mHideControlsRunnable);
+            LinphoneUtils.removeFromUIThreadDispatcher(mHideControlsRunnable);
         }
     }
 
@@ -754,42 +818,35 @@ public class CallActivity extends LinphoneGenericActivity
         }
 
         mVideoInviteInProgress.setVisibility(View.GONE);
-        mVideo.setEnabled(LinphonePreferences.instance().isVideoEnabled());
+        mVideo.setEnabled(
+                LinphonePreferences.instance().isVideoEnabled()
+                        && call != null
+                        && !call.mediaInProgress());
 
         boolean videoEnabled =
                 LinphonePreferences.instance().isVideoEnabled()
                         && call.getCurrentParams().videoEnabled();
         showVideoControls(videoEnabled);
-
-        if (videoEnabled) {
-            mAudioManager.routeAudioToSpeaker();
-            mSpeaker.setSelected(true);
-        }
     }
 
-    private void moveLocalPreview(MotionEvent motionEvent) {
+    private boolean moveLocalPreview(View view, MotionEvent motionEvent) {
         switch (motionEvent.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                mPreviewX = (int) motionEvent.getX();
-                mPreviewY = (int) motionEvent.getY();
+                mPreviewX = view.getX() - motionEvent.getRawX();
+                mPreviewY = view.getY() - motionEvent.getRawY();
                 break;
+
             case MotionEvent.ACTION_MOVE:
-                int x = (int) motionEvent.getX();
-                int y = (int) motionEvent.getY();
-
-                RelativeLayout.LayoutParams lp =
-                        (RelativeLayout.LayoutParams) mLocalPreview.getLayoutParams();
-                lp.removeRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-                lp.removeRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-
-                int left = lp.leftMargin + (x - mPreviewX);
-                int top = lp.topMargin + (y - mPreviewY);
-
-                lp.leftMargin = left;
-                lp.topMargin = top;
-                mLocalPreview.setLayoutParams(lp);
+                view.animate()
+                        .x(motionEvent.getRawX() + mPreviewX)
+                        .y(motionEvent.getRawY() + mPreviewY)
+                        .setDuration(0)
+                        .start();
                 break;
+            default:
+                return false;
         }
+        return true;
     }
 
     // NAVIGATION
@@ -798,6 +855,7 @@ public class CallActivity extends LinphoneGenericActivity
         Intent intent = new Intent();
         intent.setClass(this, DialerActivity.class);
         intent.putExtra("Transfer", false);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         startActivity(intent);
     }
 
@@ -805,12 +863,14 @@ public class CallActivity extends LinphoneGenericActivity
         Intent intent = new Intent();
         intent.setClass(this, DialerActivity.class);
         intent.putExtra("Transfer", true);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         startActivity(intent);
     }
 
     private void goToChatList() {
         Intent intent = new Intent();
         intent.setClass(this, ChatActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         startActivity(intent);
     }
 

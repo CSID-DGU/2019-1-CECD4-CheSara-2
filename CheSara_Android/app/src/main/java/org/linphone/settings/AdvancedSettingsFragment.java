@@ -1,23 +1,23 @@
-package org.linphone.settings;
-
 /*
-AdvancedSettingsFragment.java
-Copyright (C) 2019 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.settings;
 
 import android.content.Context;
 import android.content.Intent;
@@ -30,8 +30,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.Nullable;
-import org.linphone.LinphoneService;
+import androidx.appcompat.app.AppCompatDelegate;
+import org.linphone.LinphoneContext;
 import org.linphone.R;
+import org.linphone.compatibility.Compatibility;
 import org.linphone.settings.widget.BasicSetting;
 import org.linphone.settings.widget.SettingListenerBase;
 import org.linphone.settings.widget.SwitchSetting;
@@ -126,9 +128,9 @@ public class AdvancedSettingsFragment extends SettingsFragment {
                     public void onBoolValueChanged(boolean newValue) {
                         mPrefs.setServiceNotificationVisibility(newValue);
                         if (newValue) {
-                            LinphoneService.instance().getNotificationManager().startForeground();
+                            LinphoneContext.instance().getNotificationManager().startForeground();
                         } else {
-                            LinphoneService.instance().getNotificationManager().stopForeground();
+                            LinphoneContext.instance().getNotificationManager().stopForeground();
                         }
                     }
                 });
@@ -146,7 +148,10 @@ public class AdvancedSettingsFragment extends SettingsFragment {
                     @Override
                     public void onBoolValueChanged(boolean newValue) {
                         mPrefs.enableDarkMode(newValue);
-                        getActivity().recreate();
+                        AppCompatDelegate.setDefaultNightMode(
+                                newValue
+                                        ? AppCompatDelegate.MODE_NIGHT_YES
+                                        : AppCompatDelegate.MODE_NIGHT_NO);
                     }
                 });
 
@@ -205,6 +210,11 @@ public class AdvancedSettingsFragment extends SettingsFragment {
         mLogUploadUrl.setValue(mPrefs.getLogCollectionUploadServerUrl());
 
         mBackgroundMode.setChecked(mPrefs.getServiceNotificationVisibility());
+        if (Compatibility.isAppUserRestricted(getActivity())) {
+            mBackgroundMode.setChecked(false);
+            mBackgroundMode.setEnabled(false);
+            mBackgroundMode.setSubtitle(getString(R.string.pref_background_mode_warning_desc));
+        }
 
         mStartAtBoot.setChecked(mPrefs.isAutoStartEnabled());
 

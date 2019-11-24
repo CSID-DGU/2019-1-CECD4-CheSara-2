@@ -1,23 +1,23 @@
-package org.linphone.contacts;
-
 /*
-ContactsManager.java
-Copyright (C) 2017 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.contacts;
 
 import static android.os.AsyncTask.THREAD_POOL_EXECUTOR;
 
@@ -34,14 +34,15 @@ import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.RemoteException;
 import android.provider.ContactsContract;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import org.linphone.LinphoneContext;
 import org.linphone.LinphoneManager;
-import org.linphone.LinphoneService;
 import org.linphone.R;
 import org.linphone.compatibility.Compatibility;
 import org.linphone.core.Address;
@@ -64,11 +65,11 @@ public class ContactsManager extends ContentObserver implements FriendListListen
     private boolean mInitialized = false;
 
     public static ContactsManager getInstance() {
-        return LinphoneService.instance().getContactsManager();
+        return LinphoneContext.instance().getContactsManager();
     }
 
-    public ContactsManager(Context context, Handler handler) {
-        super(handler);
+    public ContactsManager(Context context) {
+        super(new Handler(Looper.getMainLooper()));
         mContext = context;
         mContactsUpdatedListeners = new ArrayList<>();
         mContacts = new ArrayList<>();
@@ -256,7 +257,7 @@ public class ContactsManager extends ContentObserver implements FriendListListen
                 if (hasReadContactsAccess()
                         && hasWriteContactsAccess()
                         && hasWriteSyncPermission()) {
-                    if (LinphoneService.isReady()) {
+                    if (LinphoneContext.isReady()) {
                         initializeSyncAccount();
                         mInitialized = true;
                     }
@@ -264,7 +265,7 @@ public class ContactsManager extends ContentObserver implements FriendListListen
             }
         }
 
-        if (mContext != null && getContacts().size() == 0 && hasReadContactsAccess()) {
+        if (mContext != null && getContacts().isEmpty() && hasReadContactsAccess()) {
             fetchContactsAsync();
         }
     }
@@ -358,11 +359,18 @@ public class ContactsManager extends ContentObserver implements FriendListListen
     public synchronized LinphoneContact findContactFromAddress(Address address) {
         if (address == null) return null;
         Core core = LinphoneManager.getCore();
+
         Friend lf = core.findFriend(address);
         if (lf != null) {
             return (LinphoneContact) lf.getUserData();
         }
-        return findContactFromPhoneNumber(address.getUsername());
+
+        String username = address.getUsername();
+        if (android.util.Patterns.PHONE.matcher(username).matches()) {
+            return findContactFromPhoneNumber(username);
+        }
+
+        return null;
     }
 
     public synchronized LinphoneContact findContactFromPhoneNumber(String phoneNumber) {
@@ -443,9 +451,12 @@ public class ContactsManager extends ContentObserver implements FriendListListen
 
     private synchronized boolean refreshSipContact(Friend lf) {
         LinphoneContact contact = (LinphoneContact) lf.getUserData();
-        if (contact != null) {
 
-            if (LinphoneService.instance().getResources().getBoolean(R.bool.use_linphone_tag)) {
+        if (contact != null) {
+            if (LinphoneContext.instance()
+                    .getApplicationContext()
+                    .getResources()
+                    .getBoolean(R.bool.use_linphone_tag)) {
                 // Inserting Linphone information in Android contact if the parameter is enabled
                 if (LinphonePreferences.instance()
                         .isPresenceStorageInNativeAndroidContactEnabled()) {
@@ -457,10 +468,10 @@ public class ContactsManager extends ContentObserver implements FriendListListen
 
             if (!mSipContacts.contains(contact)) {
                 mSipContacts.add(contact);
-
                 return true;
             }
         }
+
         return false;
     }
 
@@ -529,6 +540,6 @@ public class ContactsManager extends ContentObserver implements FriendListListen
             listener.onContactsUpdated();
         }
 
-        Compatibility.updateShortcuts(mContext);
+        Compatibility.createChatShortcuts(mContext);
     }
 }

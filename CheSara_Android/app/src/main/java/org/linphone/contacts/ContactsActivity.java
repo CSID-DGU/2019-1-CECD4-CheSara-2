@@ -1,23 +1,23 @@
-package org.linphone.contacts;
-
 /*
-ContactsActivity.java
-Copyright (C) 2019 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.contacts;
 
 import android.Manifest;
 import android.app.Fragment;
@@ -28,13 +28,17 @@ import android.view.View;
 import android.widget.Toast;
 import org.linphone.R;
 import org.linphone.activities.MainActivity;
+import org.linphone.core.tools.Log;
 
 public class ContactsActivity extends MainActivity {
+    public static final String NAME = "Contacts";
+
     private boolean mEditOnClick;
     private String mEditSipUri, mEditDisplayName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        getIntent().putExtra("Activity", NAME);
         super.onCreate(savedInstanceState);
 
         mPermissionsToHave =
@@ -53,6 +57,10 @@ public class ContactsActivity extends MainActivity {
 
             if (getIntent() != null && getIntent().getExtras() != null) {
                 Bundle extras = getIntent().getExtras();
+                Uri uri = getIntent().getData();
+                if (uri != null) {
+                    extras.putString("ContactUri", uri.toString());
+                }
                 handleIntentExtras(extras);
             } else if (getIntent() != null && getIntent().getData() != null) {
                 Uri uri = getIntent().getData();
@@ -130,18 +138,25 @@ public class ContactsActivity extends MainActivity {
             showContactsList();
         }
 
-        if (extras.containsKey("ContactUri")) {
-            String uri = extras.getString("ContactUri");
-            Uri contactUri = Uri.parse(uri);
-            String id = ContactsManager.getInstance().getAndroidContactIdFromUri(contactUri);
+        if (extras.containsKey("ContactUri") || extras.containsKey("ContactId")) {
+            String contactId = extras.getString("ContactId");
+            if (contactId == null) {
+                String uri = extras.getString("ContactUri");
+                Log.i("[Contacts Activity] Found Contact URI " + uri);
+                Uri contactUri = Uri.parse(uri);
+                contactId = ContactsManager.getInstance().getAndroidContactIdFromUri(contactUri);
+            } else {
+                Log.i("[Contacts Activity] Found Contact ID " + contactId);
+            }
 
             LinphoneContact linphoneContact =
-                    ContactsManager.getInstance().findContactFromAndroidId(id);
+                    ContactsManager.getInstance().findContactFromAndroidId(contactId);
             if (linphoneContact != null) {
                 showContactDetails(linphoneContact);
             }
         } else if (extras.containsKey("Contact")) {
             LinphoneContact contact = (LinphoneContact) extras.get("Contact");
+            Log.i("[Contacts Activity] Found Contact " + contact);
             if (extras.containsKey("Edit")) {
                 showContactEdit(contact, extras, true);
             } else {
@@ -151,6 +166,11 @@ public class ContactsActivity extends MainActivity {
             mEditOnClick = extras.getBoolean("CreateOrEdit");
             mEditSipUri = extras.getString("SipUri", null);
             mEditDisplayName = extras.getString("DisplayName", null);
+            Log.i(
+                    "[Contacts Activity] CreateOrEdit with values "
+                            + mEditSipUri
+                            + " / "
+                            + mEditDisplayName);
 
             Toast.makeText(this, R.string.toast_choose_contact_for_edition, Toast.LENGTH_LONG)
                     .show();
@@ -179,6 +199,7 @@ public class ContactsActivity extends MainActivity {
         Bundle extras = new Bundle();
         if (contact != null) {
             extras.putSerializable("Contact", contact);
+            Log.i("[Contacts Activity] Displaying Contact " + contact);
         }
 
         ContactDetailsFragment fragment = new ContactDetailsFragment();
@@ -193,6 +214,7 @@ public class ContactsActivity extends MainActivity {
     private void showContactEdit(LinphoneContact contact, Bundle extras, boolean isChild) {
         if (contact != null) {
             extras.putSerializable("Contact", contact);
+            Log.i("[Contacts Activity] Editing Contact " + contact);
         }
         if (mEditOnClick) {
             mEditOnClick = false;

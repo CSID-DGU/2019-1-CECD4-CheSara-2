@@ -1,34 +1,35 @@
-package org.linphone.views;
-
 /*
-Digit.java
-Copyright (C) 2017  Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.views;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import org.linphone.LinphoneContext;
 import org.linphone.LinphoneManager;
-import org.linphone.LinphoneService;
 import org.linphone.R;
 import org.linphone.core.Call;
 import org.linphone.core.Core;
@@ -37,18 +38,17 @@ import org.linphone.settings.LinphonePreferences;
 
 @SuppressLint("AppCompatCustomView")
 public class Digit extends Button implements AddressAware {
-
-    private AddressText mAddress;
     private boolean mPlayDtmf;
+    private AddressText mAddress;
 
     public Digit(Context context, AttributeSet attrs, int style) {
         super(context, attrs, style);
-        setLongClickable(true);
+        init(context, attrs);
     }
 
     public Digit(Context context, AttributeSet attrs) {
         super(context, attrs);
-        setLongClickable(true);
+        init(context, attrs);
     }
 
     public Digit(Context context) {
@@ -56,12 +56,12 @@ public class Digit extends Button implements AddressAware {
         setLongClickable(true);
     }
 
-    public void setAddressWidget(AddressText address) {
-        mAddress = address;
-    }
+    private void init(Context context, AttributeSet attrs) {
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.Numpad);
+        mPlayDtmf = 1 == a.getInt(R.styleable.Numpad_play_dtmf, 1);
+        a.recycle();
 
-    public void setPlayDtmf(boolean play) {
-        mPlayDtmf = play;
+        setLongClickable(true);
     }
 
     @Override
@@ -85,6 +85,11 @@ public class Digit extends Button implements AddressAware {
         }
     }
 
+    @Override
+    public void setAddressWidget(AddressText address) {
+        mAddress = address;
+    }
+
     private class DialKeyListener implements OnClickListener, OnTouchListener, OnLongClickListener {
         final char mKeyCode;
         boolean mIsDtmfStarted;
@@ -94,7 +99,7 @@ public class Digit extends Button implements AddressAware {
         }
 
         private boolean linphoneServiceReady() {
-            if (!LinphoneService.isReady()) {
+            if (!LinphoneContext.isReady()) {
                 Log.e("[Numpad] Service is not ready while pressing digit");
                 return false;
             }

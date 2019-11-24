@@ -1,23 +1,23 @@
-package org.linphone.views;
-
 /*
-LinphoneGL2JNIViewOverlay.java
-Copyright (C) 2017  Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.views;
 
 import android.content.Context;
 import android.content.Intent;
@@ -30,8 +30,8 @@ import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
+import org.linphone.LinphoneContext;
 import org.linphone.LinphoneManager;
-import org.linphone.LinphoneService;
 import org.linphone.call.CallActivity;
 import org.linphone.core.Call;
 import org.linphone.core.CallParams;
@@ -100,7 +100,7 @@ public class LinphoneGL2JNIViewOverlay extends org.linphone.mediastream.video.di
                 new OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        Context context = LinphoneService.instance();
+                        Context context = LinphoneContext.instance().getApplicationContext();
                         Intent intent = new Intent(context, CallActivity.class);
                         // This flag is required to start an Activity from a Service context
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

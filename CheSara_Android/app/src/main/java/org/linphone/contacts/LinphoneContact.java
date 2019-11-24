@@ -1,23 +1,23 @@
-package org.linphone.contacts;
-
 /*
-LinphoneContact.java
-Copyright (C) 2017  Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+package org.linphone.contacts;
 
 import android.content.Context;
 import android.database.Cursor;
@@ -26,9 +26,8 @@ import android.provider.ContactsContract;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import org.linphone.LinphoneContext;
 import org.linphone.LinphoneManager;
-import org.linphone.LinphoneService;
 import org.linphone.R;
 import org.linphone.core.Address;
 import org.linphone.core.Core;
@@ -38,6 +37,7 @@ import org.linphone.core.FriendList;
 import org.linphone.core.PresenceBasicStatus;
 import org.linphone.core.PresenceModel;
 import org.linphone.core.SubscribePolicy;
+import org.linphone.core.tools.Log;
 
 public class LinphoneContact extends AndroidContact
         implements Serializable, Comparable<LinphoneContact> {
@@ -76,14 +76,19 @@ public class LinphoneContact extends AndroidContact
         return contact;
     }
 
+    public String getContactId() {
+        if (isAndroidContact()) {
+            return getAndroidId();
+        } else {
+            // TODO
+        }
+        return null;
+    }
+
     @Override
     public int compareTo(LinphoneContact contact) {
-        String fullName =
-                getFullName() != null ? getFullName().toUpperCase(Locale.getDefault()) : "";
-        String contactFullName =
-                contact.getFullName() != null
-                        ? contact.getFullName().toUpperCase(Locale.getDefault())
-                        : "";
+        String fullName = getFullName() != null ? getFullName() : "";
+        String contactFullName = contact.getFullName() != null ? contact.getFullName() : "";
 
         if (fullName.equals(contactFullName)) {
             if (getAndroidId() != null) {
@@ -130,7 +135,7 @@ public class LinphoneContact extends AndroidContact
     }
 
     public void setFirstNameAndLastName(String fn, String ln, boolean commitChanges) {
-        if (fn != null && fn.length() == 0 && ln != null && ln.length() == 0) return;
+        if (fn != null && fn.isEmpty() && ln != null && ln.isEmpty()) return;
         if (fn != null && fn.equals(mFirstName) && ln != null && ln.equals(mLastName)) return;
 
         if (commitChanges) {
@@ -213,16 +218,16 @@ public class LinphoneContact extends AndroidContact
         boolean found = false;
         // Check for duplicated phone numbers but with different formats
         for (LinphoneNumberOrAddress number : mAddresses) {
-            if ((!noa.isSIPAddress()
-                            && !number.isSIPAddress()
-                            && noa.getNormalizedPhone().equals(number.getNormalizedPhone()))
-                    || (noa.isSIPAddress()
-                            && !number.isSIPAddress()
-                            && noa.getValue().equals(number.getNormalizedPhone()))
-                    || (number.getValue().equals(noa.getNormalizedPhone())
-                            || !number.isSIPAddress())) {
-                found = true;
-                break;
+            if (!number.isSIPAddress()) {
+                if ((!noa.isSIPAddress()
+                                && noa.getNormalizedPhone().equals(number.getNormalizedPhone()))
+                        || (noa.isSIPAddress()
+                                && noa.getValue().equals(number.getNormalizedPhone()))
+                        || (noa.getNormalizedPhone().equals(number.getValue()))) {
+                    Log.d("[Linphone Contact] Duplicated entry detected: " + noa);
+                    found = true;
+                    break;
+                }
             }
         }
 
@@ -325,7 +330,7 @@ public class LinphoneContact extends AndroidContact
         return mFriend;
     }
 
-    private void createOrUpdateFriend() {
+    private synchronized void createOrUpdateFriend() {
         boolean created = false;
         Core core = LinphoneManager.getCore();
         if (core == null) return;
@@ -430,9 +435,7 @@ public class LinphoneContact extends AndroidContact
     }
 
     public String getContactFromPresenceModelForUriOrTel(String uri) {
-
         if (mFriend != null && mFriend.getPresenceModelForUriOrTel(uri) != null) {
-
             return mFriend.getPresenceModelForUriOrTel(uri).getContact();
         }
         return null;
@@ -446,8 +449,16 @@ public class LinphoneContact extends AndroidContact
     }
 
     public boolean hasPresenceModelForUriOrTelCapability(String uri, FriendCapability capability) {
-        if (mFriend != null && mFriend.getPresenceModelForUriOrTel(uri) != null) {
+        if (mFriend == null) return false;
+        if (mFriend.getPresenceModelForUriOrTel(uri) != null) {
             return mFriend.getPresenceModelForUriOrTel(uri).hasCapability(capability);
+        } else {
+            for (LinphoneNumberOrAddress noa : getNumbersOrAddresses()) {
+                if (getContactFromPresenceModelForUriOrTel(noa.getValue()).equals(uri)) {
+                    return mFriend.getPresenceModelForUriOrTel(noa.getValue())
+                            .hasCapability(capability);
+                }
+            }
         }
         return false;
     }
@@ -537,27 +548,64 @@ public class LinphoneContact extends AndroidContact
         String data4 = c.getString(c.getColumnIndex("data4"));
 
         if (getFullName() == null) {
+            Log.d("[Linphone Contact] Setting display name " + displayName);
             setFullName(displayName);
         }
 
         if (ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE.equals(mime)) {
+            Log.d("[Linphone Contact] Found phone number " + data1 + " (" + data4 + ")");
             addNumberOrAddress(new LinphoneNumberOrAddress(data1, data4));
-
         } else if (ContactsContract.CommonDataKinds.SipAddress.CONTENT_ITEM_TYPE.equals(mime)
-                || LinphoneService.instance()
+                || LinphoneContext.instance()
+                        .getApplicationContext()
                         .getString(R.string.linphone_address_mime_type)
                         .equals(mime)) {
+            Log.d("[Linphone Contact] Found SIP address " + data1);
             addNumberOrAddress(new LinphoneNumberOrAddress(data1, true));
         } else if (ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE.equals(mime)) {
+            Log.d("[Linphone Contact] Found organization " + data1);
             setOrganization(data1, false);
         } else if (ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE.equals(mime)) {
+            Log.d("[Linphone Contact] Found first name " + data2 + " and last name " + data3);
             setFirstNameAndLastName(data2, data3, false);
+        } else {
+            Log.d("[Linphone Contact] Skipping unused MIME type " + mime);
         }
+    }
+
+    public synchronized void updateNativeContactWithPresenceInfo() {
+        Log.d("[Contact] Trying to update native contact with presence information");
+
+        // Creation of the raw contact with the presence information (tablet)
+        createRawLinphoneContactFromExistingAndroidContactIfNeeded();
+
+        for (LinphoneNumberOrAddress noa : getNumbersOrAddresses()) {
+            if (noa.isSIPAddress()) {
+                // We are only interested in SIP addresses
+                continue;
+            }
+            String value = noa.getValue();
+            if (value == null || value.isEmpty()) {
+                return;
+            }
+
+            // Test presence of the value
+            PresenceModel pm = getFriend().getPresenceModelForUriOrTel(value);
+            // If presence is not null
+            if (pm != null && pm.getBasicStatus().equals(PresenceBasicStatus.Open)) {
+                Log.d("[Contact] Found presence information for phone number " + value);
+                if (!isLinphoneAddressMimeEntryAlreadyExisting(value)) {
+                    // Do the action on the contact only once if it has not been done yet
+                    updateNativeContactWithPresenceInfo(value);
+                }
+            }
+        }
+        saveChangesCommited();
     }
 
     public void save() {
         saveChangesCommited();
-        syncValuesFromAndroidContact(LinphoneService.instance());
+        syncValuesFromAndroidContact(LinphoneContext.instance().getApplicationContext());
         createOrUpdateFriend();
     }
 

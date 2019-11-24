@@ -1,23 +1,23 @@
-package org.linphone.activities;
-
 /*
-MainActivity.java
-Copyright (C) 2019 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.activities;
 
 import android.Manifest;
 import android.app.ActivityManager;
@@ -44,9 +44,13 @@ import android.widget.Toast;
 import androidx.core.app.ActivityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import java.util.ArrayList;
+import org.linphone.LinphoneContext;
 import org.linphone.LinphoneManager;
 import org.linphone.LinphoneService;
 import org.linphone.R;
+import org.linphone.call.CallActivity;
+import org.linphone.call.CallIncomingActivity;
+import org.linphone.call.CallOutgoingActivity;
 import org.linphone.chat.ChatActivity;
 import org.linphone.compatibility.Compatibility;
 import org.linphone.contacts.ContactsActivity;
@@ -81,7 +85,7 @@ public abstract class MainActivity extends LinphoneGenericActivity
     private TextView mMissedMessages;
     protected View mContactsSelected;
     protected View mHistorySelected;
-    View mDialerSelected;
+    protected View mDialerSelected;
     protected View mChatSelected;
     private LinearLayout mTopBar;
     private TextView mTopBarTitle;
@@ -99,13 +103,6 @@ public abstract class MainActivity extends LinphoneGenericActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (mAbortCreation) {
-            return;
-        }
-
-        if (!LinphoneService.isReady()) {
-            finish();
-        }
 
         setContentView(R.layout.main);
 
@@ -147,8 +144,9 @@ public abstract class MainActivity extends LinphoneGenericActivity
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        Intent intent = new Intent(MainActivity.this, ChatActivity.class);
-                        addFlagsToIntent(intent);
+                        //                        Intent intent = new Intent(MainActivity.this,
+                        // ChatActivity.class);
+                        Intent intent = new Intent(MainActivity.this, FileActivity.class);
                         startActivity(intent);
                     }
                 });
@@ -281,6 +279,7 @@ public abstract class MainActivity extends LinphoneGenericActivity
         requestRequiredPermissions();
 
         if (DeviceUtils.isAppUserRestricted(this)) {
+            // See https://firebase.google.com/docs/cloud-messaging/android/receive#restricted
             Log.w(
                     "[Main Activity] Device has been restricted by user (Android 9+), push notifications won't work !");
         }
@@ -301,7 +300,7 @@ public abstract class MainActivity extends LinphoneGenericActivity
     protected void onResume() {
         super.onResume();
 
-        LinphoneService.instance()
+        LinphoneContext.instance()
                 .getNotificationManager()
                 .removeForegroundServiceNotificationIfPossible();
 
@@ -345,6 +344,26 @@ public abstract class MainActivity extends LinphoneGenericActivity
         }
 
         super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        mMissedCalls = null;
+        mMissedMessages = null;
+        mContactsSelected = null;
+        mHistorySelected = null;
+        mDialerSelected = null;
+        mChatSelected = null;
+        mTopBar = null;
+        mTopBarTitle = null;
+        mTabBar = null;
+
+        mSideMenuFragment = null;
+        mStatusBarFragment = null;
+
+        mListener = null;
+
+        super.onDestroy();
     }
 
     @Override
@@ -592,6 +611,36 @@ public abstract class MainActivity extends LinphoneGenericActivity
     }
 
     // Navigation between actvities
+
+    public void goBackToCall() {
+        boolean incoming = false;
+        boolean outgoing = false;
+        Call[] calls = LinphoneManager.getCore().getCalls();
+
+        for (Call call : calls) {
+            Call.State state = call.getState();
+            switch (state) {
+                case IncomingEarlyMedia:
+                case IncomingReceived:
+                    incoming = true;
+                    break;
+                case OutgoingEarlyMedia:
+                case OutgoingInit:
+                case OutgoingProgress:
+                case OutgoingRinging:
+                    outgoing = true;
+                    break;
+            }
+        }
+
+        if (incoming) {
+            startActivity(new Intent(this, CallIncomingActivity.class));
+        } else if (outgoing) {
+            startActivity(new Intent(this, CallOutgoingActivity.class));
+        } else {
+            startActivity(new Intent(this, CallActivity.class));
+        }
+    }
 
     private void addFlagsToIntent(Intent intent) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);

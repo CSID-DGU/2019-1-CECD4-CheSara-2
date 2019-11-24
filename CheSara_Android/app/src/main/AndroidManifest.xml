@@ -47,6 +47,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Needed to get the current Do Not Disturb policy -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- Needed for full screen intent in notifications -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <supports-screens
         android:anyDensity="true"
@@ -61,19 +63,19 @@
         android:label="@string/app_name"
         android:largeHeap="true"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:theme="@style/LinphoneStyleLight">
+        android:resizeableActivity="true"
+        android:theme="@style/LinphoneStyle">
 
         <!-- Starting activities -->
 
         <activity
             android:name=".activities.LinphoneLauncherActivity"
-            android:noHistory="true"
-            android:theme="@style/LinphoneLauncherStyle">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
 
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
 
         <!-- Main activities -->
@@ -140,6 +142,14 @@
             </intent-filter>
         </activity>
 
+
+        <activity
+            android:name=".activities.FileActivity"
+            android:launchMode="singleTop">
+        </activity>
+
+
+
         <activity
             android:name=".contacts.ContactsActivity"
             android:launchMode="singleTop">
@@ -177,7 +187,6 @@
             android:name=".call.CallActivity"
             android:launchMode="singleTop"
             android:showWhenLocked="true"
-            android:resizeableActivity="true"
             android:supportsPictureInPicture="true"/>
 
         <!-- Assistant activities -->
@@ -238,7 +247,9 @@
                 android:resource="@xml/authenticator" />
         </service>
 
-        <service android:name=".firebase.FirebaseMessaging">
+        <service android:name=".firebase.FirebaseMessaging"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
@@ -264,7 +275,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.provider"
+            android:authorities="${linphone_file_provider}"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

@@ -1,23 +1,23 @@
-package org.linphone.receivers;
-
 /*
-BluetoothReceiver.java
-Copyright (C) 2019 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.receivers;
 
 import android.bluetooth.BluetoothHeadset;
 import android.content.BroadcastReceiver;
@@ -76,6 +76,35 @@ public class BluetoothReceiver extends BroadcastReceiver {
             } else {
                 Log.w("[Bluetooth] Bluetooth headset unknown SCO state changed: " + state);
             }
+        } else if (action.equals(BluetoothHeadset.ACTION_VENDOR_SPECIFIC_HEADSET_EVENT)) {
+            String command =
+                    intent.getStringExtra(BluetoothHeadset.EXTRA_VENDOR_SPECIFIC_HEADSET_EVENT_CMD);
+            int type =
+                    intent.getIntExtra(
+                            BluetoothHeadset.EXTRA_VENDOR_SPECIFIC_HEADSET_EVENT_CMD_TYPE, -1);
+
+            String commandType;
+            switch (type) {
+                case BluetoothHeadset.AT_CMD_TYPE_ACTION:
+                    commandType = "AT Action";
+                    break;
+                case BluetoothHeadset.AT_CMD_TYPE_READ:
+                    commandType = "AT Read";
+                    break;
+                case BluetoothHeadset.AT_CMD_TYPE_TEST:
+                    commandType = "AT Test";
+                    break;
+                case BluetoothHeadset.AT_CMD_TYPE_SET:
+                    commandType = "AT Set";
+                    break;
+                case BluetoothHeadset.AT_CMD_TYPE_BASIC:
+                    commandType = "AT Basic";
+                    break;
+                default:
+                    commandType = "AT Unknown";
+                    break;
+            }
+            Log.i("[Bluetooth] Vendor action " + commandType + " : " + command);
         } else {
             Log.w("[Bluetooth] Bluetooth unknown action: " + action);
         }

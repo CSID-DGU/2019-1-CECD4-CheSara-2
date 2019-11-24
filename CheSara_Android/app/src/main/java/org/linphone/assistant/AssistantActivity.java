@@ -1,28 +1,23 @@
-package org.linphone.assistant;
-
 /*
-AssistantActivity.java
-Copyright (C) 2019 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
-
-import static org.linphone.core.AccountCreator.UsernameStatus.Invalid;
-import static org.linphone.core.AccountCreator.UsernameStatus.InvalidCharacters;
-import static org.linphone.core.AccountCreator.UsernameStatus.TooLong;
-import static org.linphone.core.AccountCreator.UsernameStatus.TooShort;
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.assistant;
 
 import android.app.AlertDialog;
 import android.content.Intent;
@@ -32,8 +27,8 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageView;
+import org.linphone.LinphoneContext;
 import org.linphone.LinphoneManager;
-import org.linphone.LinphoneService;
 import org.linphone.R;
 import org.linphone.activities.DialerActivity;
 import org.linphone.activities.LinphoneGenericActivity;
@@ -49,7 +44,7 @@ public abstract class AssistantActivity extends LinphoneGenericActivity
         implements CountryPicker.CountryPickedListener {
     static AccountCreator mAccountCreator;
 
-    ImageView mBack;
+    protected ImageView mBack;
     private AlertDialog mCountryPickerDialog;
 
     private CountryPicker mCountryPicker;
@@ -57,9 +52,6 @@ public abstract class AssistantActivity extends LinphoneGenericActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (mAbortCreation) {
-            return;
-        }
 
         if (mAccountCreator == null) {
             String url = LinphonePreferences.instance().getXmlrpcUrl();
@@ -96,6 +88,15 @@ public abstract class AssistantActivity extends LinphoneGenericActivity
     }
 
     @Override
+    protected void onDestroy() {
+        mBack = null;
+        mCountryPickerDialog = null;
+        mCountryPicker = null;
+
+        super.onDestroy();
+    }
+
+    @Override
     public void onCountryClicked(DialPlan dialPlan) {
         if (mCountryPickerDialog != null) {
             mCountryPickerDialog.dismiss();
@@ -120,7 +121,7 @@ public abstract class AssistantActivity extends LinphoneGenericActivity
             // If this isn't a sip.linphone.org account, disable push notifications and enable
             // service notification, otherwise incoming calls won't work (most probably)
             LinphonePreferences.instance().setServiceNotificationVisibility(true);
-            LinphoneService.instance().getNotificationManager().startForeground();
+            LinphoneContext.instance().getNotificationManager().startForeground();
         }
 
         if (proxyConfig == null) {
@@ -166,6 +167,8 @@ public abstract class AssistantActivity extends LinphoneGenericActivity
                 intent = new Intent(this, OpenH264DownloadAssistantActivity.class);
             } else {*/
             intent = new Intent(this, DialerActivity.class);
+            intent.addFlags(
+                    Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
             // }
         }
         startActivity(intent);

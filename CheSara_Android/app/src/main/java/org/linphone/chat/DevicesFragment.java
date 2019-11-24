@@ -1,23 +1,23 @@
-package org.linphone.chat;
-
 /*
-DevicesFragment.java
-Copyright (C) 2018 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.chat;
 
 import android.app.Fragment;
 import android.os.Bundle;
@@ -28,7 +28,7 @@ import android.widget.ExpandableListView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.Nullable;
-import java.util.Arrays;
+import java.util.ArrayList;
 import org.linphone.LinphoneManager;
 import org.linphone.R;
 import org.linphone.contacts.ContactsManager;
@@ -38,6 +38,7 @@ import org.linphone.core.ChatRoom;
 import org.linphone.core.ChatRoomCapabilities;
 import org.linphone.core.Core;
 import org.linphone.core.Factory;
+import org.linphone.core.Participant;
 import org.linphone.core.ParticipantDevice;
 import org.linphone.utils.LinphoneUtils;
 
@@ -173,8 +174,13 @@ public class DevicesFragment extends Fragment {
         }
 
         if (mRoom != null && mRoom.getNbParticipants() > 0) {
-            mOnlyDisplayChilds = mRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt());
-            mAdapter.updateListItems(Arrays.asList(mRoom.getParticipants()), mOnlyDisplayChilds);
+            ArrayList<Participant> participantLists = new ArrayList<>();
+            // Group position 0 is reserved for ME participant & devices
+            participantLists.add(mRoom.getMe());
+            for (Participant participant : mRoom.getParticipants()) {
+                participantLists.add(participant);
+            }
+            mAdapter.updateListItems(participantLists);
         }
     }
 }

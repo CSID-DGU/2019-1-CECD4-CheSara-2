@@ -1,52 +1,48 @@
+/*
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.linphone.activities;
 
-/*
-LinphoneGenericActivity.java
-Copyright (C) 2017 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
-
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Surface;
+import org.linphone.LinphoneContext;
 import org.linphone.LinphoneManager;
 import org.linphone.LinphoneService;
 import org.linphone.core.Core;
 import org.linphone.core.tools.Log;
 
 public abstract class LinphoneGenericActivity extends ThemeableActivity {
-    protected boolean mAbortCreation;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        mAbortCreation = false;
         super.onCreate(savedInstanceState);
-        // After a crash, Android restart the last Activity so we need to check
-        // if all dependencies are loaded
-        if (!LinphoneService.isReady()) {
-            startActivity(getIntent().setClass(this, LinphoneLauncherActivity.class));
-            mAbortCreation = true;
-            finish();
-        }
+
+        ensureServiceIsRunning();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        if (LinphoneService.isReady()) {
+        ensureServiceIsRunning();
+
+        if (LinphoneContext.isReady()) {
             int degrees = 270;
             int orientation = getWindowManager().getDefaultDisplay().getRotation();
             switch (orientation) {
@@ -76,6 +72,16 @@ public abstract class LinphoneGenericActivity extends ThemeableActivity {
             if (core != null) {
                 core.setDeviceRotation(rotation);
             }
+        }
+    }
+
+    private void ensureServiceIsRunning() {
+        if (!LinphoneService.isReady()) {
+            if (!LinphoneContext.isReady()) {
+                new LinphoneContext(getApplicationContext());
+                LinphoneContext.instance().start(false);
+            }
+            startService(new Intent().setClass(this, LinphoneService.class));
         }
     }
 }

@@ -1,23 +1,23 @@
-package org.linphone.utils;
-
 /*
-LinphoneShortcutManager.java
-Copyright (C) 2019 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.utils;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -29,12 +29,8 @@ import android.util.ArraySet;
 import java.util.Set;
 import org.linphone.R;
 import org.linphone.chat.ChatActivity;
-import org.linphone.contacts.ContactsManager;
+import org.linphone.contacts.ContactsActivity;
 import org.linphone.contacts.LinphoneContact;
-import org.linphone.core.Address;
-import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomCapabilities;
-import org.linphone.core.Factory;
 import org.linphone.core.tools.Log;
 
 @TargetApi(25)
@@ -48,16 +44,16 @@ public class LinphoneShortcutManager {
         mCategories.add(ShortcutInfo.SHORTCUT_CATEGORY_CONVERSATION);
     }
 
-    public ShortcutInfo createChatRoomShortcutInfo(ChatRoom room) {
-        Address peerAddress =
-                room.hasCapability(ChatRoomCapabilities.Basic.toInt())
-                        ? room.getPeerAddress()
-                        : room.getParticipants()[0].getAddress();
-        LinphoneContact contact = ContactsManager.getInstance().findContactFromAddress(peerAddress);
-        String address = peerAddress.asStringUriOnly();
+    public void destroy() {
+        mContext = null;
+    }
+
+    public ShortcutInfo createChatRoomShortcutInfo(
+            LinphoneContact contact, String chatRoomAddress) {
+        if (contact == null) return null;
 
         Bitmap bm = null;
-        if (contact != null && contact.getThumbnailUri() != null) {
+        if (contact.getThumbnailUri() != null) {
             bm = ImageUtils.getRoundBitmapFromUri(mContext, contact.getThumbnailUri());
         }
         Icon icon =
@@ -65,20 +61,15 @@ public class LinphoneShortcutManager {
                         ? Icon.createWithResource(mContext, R.drawable.avatar)
                         : Icon.createWithBitmap(bm);
 
-        String name =
-                contact == null
-                        ? LinphoneUtils.getAddressDisplayName(peerAddress)
-                        : contact.getFullName();
-
         try {
             Intent intent = new Intent(Intent.ACTION_MAIN);
             intent.setClass(mContext, ChatActivity.class);
             intent.addFlags(
                     Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-            intent.putExtra("RemoteSipUri", room.getPeerAddress().asStringUriOnly());
+            intent.putExtra("RemoteSipUri", chatRoomAddress);
 
-            return new ShortcutInfo.Builder(mContext, address)
-                    .setShortLabel(name)
+            return new ShortcutInfo.Builder(mContext, chatRoomAddress)
+                    .setShortLabel(contact.getFullName())
                     .setIcon(icon)
                     .setCategories(mCategories)
                     .setIntent(intent)
@@ -90,37 +81,35 @@ public class LinphoneShortcutManager {
         return null;
     }
 
-    public ShortcutInfo updateShortcutInfo(ShortcutInfo shortcutInfo) {
-        String address = shortcutInfo.getId();
-        Address peerAddress = Factory.instance().createAddress(address);
-        LinphoneContact contact = ContactsManager.getInstance().findContactFromAddress(peerAddress);
+    public ShortcutInfo createContactShortcutInfo(LinphoneContact contact) {
+        if (contact == null) return null;
 
-        if (contact != null) {
-            Bitmap bm = null;
-            if (contact != null && contact.getThumbnailUri() != null) {
-                bm = ImageUtils.getRoundBitmapFromUri(mContext, contact.getThumbnailUri());
-            }
-            Icon icon =
-                    bm == null
-                            ? Icon.createWithResource(mContext, R.drawable.avatar)
-                            : Icon.createWithBitmap(bm);
-
-            String name =
-                    contact == null
-                            ? LinphoneUtils.getAddressDisplayName(peerAddress)
-                            : contact.getFullName();
-
-            try {
-                return new ShortcutInfo.Builder(mContext, address)
-                        .setShortLabel(name)
-                        .setIcon(icon)
-                        .setCategories(mCategories)
-                        .setIntent(shortcutInfo.getIntent())
-                        .build();
-            } catch (Exception e) {
-                Log.e("[Shortcuts Manager] ShortcutInfo.Builder exception: " + e);
-            }
+        Bitmap bm = null;
+        if (contact.getThumbnailUri() != null) {
+            bm = ImageUtils.getRoundBitmapFromUri(mContext, contact.getThumbnailUri());
         }
-        return shortcutInfo;
+        Icon icon =
+                bm == null
+                        ? Icon.createWithResource(mContext, R.drawable.avatar)
+                        : Icon.createWithBitmap(bm);
+
+        try {
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.setClass(mContext, ContactsActivity.class);
+            intent.addFlags(
+                    Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            intent.putExtra("ContactId", contact.getContactId());
+
+            return new ShortcutInfo.Builder(mContext, contact.getContactId())
+                    .setShortLabel(contact.getFullName())
+                    .setIcon(icon)
+                    .setCategories(mCategories)
+                    .setIntent(intent)
+                    .build();
+        } catch (Exception e) {
+            Log.e("[Shortcuts Manager] ShortcutInfo.Builder exception: " + e);
+        }
+
+        return null;
     }
 }

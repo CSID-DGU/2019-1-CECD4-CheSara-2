@@ -1,23 +1,23 @@
-package org.linphone.utils;
-
 /*
-LinphoneUtils.java
-Copyright (C) 2017 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.utils;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -39,24 +39,20 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.core.content.ContextCompat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.regex.Pattern;
+import org.linphone.LinphoneContext;
 import org.linphone.LinphoneManager;
-import org.linphone.LinphoneService;
 import org.linphone.R;
 import org.linphone.core.Address;
 import org.linphone.core.Call;
 import org.linphone.core.CallLog;
-import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomCapabilities;
 import org.linphone.core.Core;
 import org.linphone.core.Factory;
 import org.linphone.core.LogCollectionState;
 import org.linphone.core.ProxyConfig;
 import org.linphone.core.tools.Log;
-import org.linphone.mediastream.video.capture.hwconf.AndroidCameraConfiguration;
 import org.linphone.settings.LinphonePreferences;
 
 /** Helpers. */
@@ -74,16 +70,16 @@ public final class LinphoneUtils {
             Factory.instance()
                     .enableLogCollection(LogCollectionState.EnabledWithoutPreviousLogHandler);
             if (isDebugEnabled) {
-                if (LinphoneService.isReady()) {
+                if (LinphoneContext.isReady()) {
                     Factory.instance()
                             .getLoggingService()
-                            .addListener(LinphoneService.instance().getJavaLoggingService());
+                            .addListener(LinphoneContext.instance().getJavaLoggingService());
                 }
             } else {
-                if (LinphoneService.isReady()) {
+                if (LinphoneContext.isReady()) {
                     Factory.instance()
                             .getLoggingService()
-                            .removeListener(LinphoneService.instance().getJavaLoggingService());
+                            .removeListener(LinphoneContext.instance().getJavaLoggingService());
                 }
             }
         }
@@ -91,6 +87,14 @@ public final class LinphoneUtils {
 
     public static void dispatchOnUIThread(Runnable r) {
         sHandler.post(r);
+    }
+
+    public static void dispatchOnUIThreadAfter(Runnable r, long after) {
+        sHandler.postDelayed(r, after);
+    }
+
+    public static void removeFromUIThreadDispatcher(Runnable r) {
+        sHandler.removeCallbacks(r);
     }
 
     private static boolean isSipAddress(String numberOrAddress) {
@@ -222,25 +226,10 @@ public final class LinphoneUtils {
         Core core = LinphoneManager.getCore();
         if (core == null) return;
 
-        Log.i("[Utils] Reloading camera");
+        Log.i("[Utils] Reloading camera devices");
         core.reloadVideoDevices();
 
-        boolean useFrontCam = LinphonePreferences.instance().useFrontCam();
-        int camId = 0;
-        AndroidCameraConfiguration.AndroidCamera[] cameras =
-                AndroidCameraConfiguration.retrieveCameras();
-        for (AndroidCameraConfiguration.AndroidCamera androidCamera : cameras) {
-            if (androidCamera.frontFacing == useFrontCam) {
-                camId = androidCamera.id;
-                break;
-            }
-        }
-        String[] devices = core.getVideoDevicesList();
-        if (camId >= devices.length) {
-            camId = 0;
-        }
-        String newDevice = devices[camId];
-        core.setVideoDevice(newDevice);
+        LinphoneManager.getInstance().resetCameraFromPreferences();
     }
 
     public static String getDisplayableUsernameFromAddress(String sipAddress) {
@@ -260,7 +249,10 @@ public final class LinphoneUtils {
                     return username.split("@")[0];
                 }
             } else {
-                if (domain.equals(LinphoneService.instance().getString(R.string.default_domain))) {
+                if (domain.equals(
+                        LinphoneContext.instance()
+                                .getApplicationContext()
+                                .getString(R.string.default_domain))) {
                     return username.split("@")[0];
                 }
             }
@@ -285,7 +277,9 @@ public final class LinphoneUtils {
                 sipAddress =
                         sipAddress
                                 + "@"
-                                + LinphoneService.instance().getString(R.string.default_domain);
+                                + LinphoneContext.instance()
+                                        .getApplicationContext()
+                                        .getString(R.string.default_domain);
             }
         }
         return sipAddress;
@@ -341,18 +335,6 @@ public final class LinphoneUtils {
         }
 
         return Html.fromHtml(text);
-    }
-
-    public static ArrayList<ChatRoom> removeEmptyOneToOneChatRooms(ChatRoom[] rooms) {
-        ArrayList<ChatRoom> newRooms = new ArrayList<>();
-        for (ChatRoom room : rooms) {
-            // Hide 1-1 chat rooms without messages
-            if (!(room.hasCapability(ChatRoomCapabilities.OneToOne.toInt())
-                    && room.getHistorySize() == 0)) {
-                newRooms.add(room);
-            }
-        }
-        return newRooms;
     }
 
     public static void showTrustDeniedDialog(Context context) {

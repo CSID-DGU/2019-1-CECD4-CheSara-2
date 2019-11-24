@@ -1,27 +1,28 @@
-package org.linphone.settings;
-
 /*
-LinphonePreferences.java
-Copyright (C) 2017  Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ * Copyright (c) 2010-2019 Belledonne Communications SARL.
+ *
+ * This file is part of linphone-android
+ * (see https://www.linphone.org).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.linphone.settings;
 
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import androidx.appcompat.app.AppCompatDelegate;
 import java.io.BufferedReader;
 import java.io.File;
@@ -29,9 +30,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
+import org.linphone.LinphoneContext;
 import org.linphone.LinphoneManager;
-import org.linphone.LinphoneService;
 import org.linphone.R;
 import org.linphone.compatibility.Compatibility;
 import org.linphone.core.Address;
@@ -49,7 +49,6 @@ import org.linphone.core.VideoActivationPolicy;
 import org.linphone.core.VideoDefinition;
 import org.linphone.core.tools.Log;
 import org.linphone.mediastream.Version;
-import org.linphone.purchase.Purchasable;
 import org.linphone.utils.LinphoneUtils;
 
 public class LinphonePreferences {
@@ -142,15 +141,15 @@ public class LinphonePreferences {
     }
 
     private String getString(int key) {
-        if (mContext == null && LinphoneService.isReady()) {
-            mContext = LinphoneService.instance();
+        if (mContext == null && LinphoneContext.isReady()) {
+            mContext = LinphoneContext.instance().getApplicationContext();
         }
 
         return mContext.getString(key);
     }
 
     private Core getLc() {
-        if (!LinphoneService.isReady()) return null;
+        if (!LinphoneContext.isReady()) return null;
 
         return LinphoneManager.getCore();
     }
@@ -161,7 +160,7 @@ public class LinphonePreferences {
             return core.getConfig();
         }
 
-        if (!LinphoneService.isReady()) {
+        if (!LinphoneContext.isReady()) {
             File linphonerc = new File(mBasePath + "/.linphonerc");
             if (linphonerc.exists()) {
                 return Factory.instance().createConfig(linphonerc.getAbsolutePath());
@@ -199,7 +198,7 @@ public class LinphonePreferences {
 
     public String getRingtone(String defaultRingtone) {
         String ringtone = getConfig().getString("app", "ringtone", defaultRingtone);
-        if (ringtone == null || ringtone.length() == 0) ringtone = defaultRingtone;
+        if (ringtone == null || ringtone.isEmpty()) ringtone = defaultRingtone;
         return ringtone;
     }
 
@@ -326,6 +325,14 @@ public class LinphonePreferences {
 
     public void setFrontCamAsDefault(boolean frontcam) {
         getConfig().setBool("app", "front_camera_default", frontcam);
+    }
+
+    public String getCameraDevice() {
+        return getLc().getVideoDevice();
+    }
+
+    public void setCameraDevice(String device) {
+        getLc().setVideoDevice(device);
     }
 
     public boolean isVideoEnabled() {
@@ -592,7 +599,7 @@ public class LinphonePreferences {
         if (getLc() == null) return;
         NatPolicy nat = getOrCreateNatPolicy();
         nat.enableIce(enabled);
-        nat.enableStun(enabled);
+        if (enabled) nat.enableStun(true);
         getLc().setNatPolicy(nat);
     }
 
@@ -817,7 +824,7 @@ public class LinphonePreferences {
 
     public void setRemoteProvisioningUrl(String url) {
         if (getLc() == null) return;
-        if (url != null && url.length() == 0) {
+        if (url != null && url.isEmpty()) {
             url = null;
         }
         getLc().setProvisioningUri(url);
@@ -900,6 +907,53 @@ public class LinphonePreferences {
         }
     }
 
+    public String getTunnelHost2() {
+        TunnelConfig config = getTunnelConfig();
+        if (config != null) {
+            return config.getHost2();
+        } else {
+            return null;
+        }
+    }
+
+    public void setTunnelHost2(String host) {
+        TunnelConfig config = getTunnelConfig();
+        if (config != null) {
+            config.setHost2(host);
+            LinphoneManager.getInstance().initTunnelFromConf();
+        }
+    }
+
+    public int getTunnelPort2() {
+        TunnelConfig config = getTunnelConfig();
+        if (config != null) {
+            return config.getPort2();
+        } else {
+            return -1;
+        }
+    }
+
+    public void setTunnelPort2(int port) {
+        TunnelConfig config = getTunnelConfig();
+        if (config != null) {
+            config.setPort2(port);
+            LinphoneManager.getInstance().initTunnelFromConf();
+        }
+    }
+
+    public void enableTunnelDualMode(boolean enable) {
+        LinphoneManager.getInstance().initTunnelFromConf();
+        getLc().getTunnel().enableDualMode(enable);
+    }
+
+    public boolean isTunnelDualModeEnabled() {
+        Tunnel tunnel = getLc().getTunnel();
+        if (tunnel != null) {
+            return tunnel.dualModeEnabled();
+        }
+        return false;
+    }
+
     public String getTunnelMode() {
         return getConfig().getString("app", "tunnel", null);
     }
@@ -928,54 +982,8 @@ public class LinphonePreferences {
         getConfig().setInt("audio", "codec_bitrate_limit", bitrate);
     }
 
-    public String getInAppPurchaseValidatingServerUrl() {
-        return getConfig().getString("in-app-purchase", "server_url", null);
-    }
-
-    public Purchasable getInAppPurchasedItem() {
-        String id = getConfig().getString("in-app-purchase", "purchase_item_id", null);
-        String payload = getConfig().getString("in-app-purchase", "purchase_item_payload", null);
-        String signature =
-                getConfig().getString("in-app-purchase", "purchase_item_signature", null);
-        String username = getConfig().getString("in-app-purchase", "purchase_item_username", null);
-
-        return new Purchasable(id).setPayloadAndSignature(payload, signature).setUserData(username);
-    }
-
-    public void setInAppPurchasedItem(Purchasable item) {
-        if (item == null) return;
-
-        getConfig().setString("in-app-purchase", "purchase_item_id", item.getId());
-        getConfig().setString("in-app-purchase", "purchase_item_payload", item.getPayload());
-        getConfig()
-                .setString(
-                        "in-app-purchase", "purchase_item_signature", item.getPayloadSignature());
-        getConfig().setString("in-app-purchase", "purchase_item_username", item.getUserData());
-    }
-
-    public ArrayList<String> getInAppPurchasables() {
-        ArrayList<String> purchasables = new ArrayList<>();
-        String list = getConfig().getString("in-app-purchase", "purchasable_items_ids", null);
-        if (list != null) {
-            for (String purchasable : list.split(";")) {
-                if (purchasable.length() > 0) {
-                    purchasables.add(purchasable);
-                }
-            }
-        }
-        return purchasables;
-    }
-
     public String getXmlrpcUrl() {
         return getConfig().getString("assistant", "xmlrpc_url", null);
-    }
-
-    public String getInappPopupTime() {
-        return getConfig().getString("app", "inapp_popup_time", null);
-    }
-
-    public void setInappPopupTime(String date) {
-        getConfig().setString("app", "inapp_popup_time", date);
     }
 
     public String getLinkPopupTime() {
@@ -1128,12 +1136,19 @@ public class LinphonePreferences {
 
     public boolean isDarkModeEnabled() {
         if (getConfig() == null) return false;
-        return getConfig()
-                .getBool(
-                        "app",
-                        "dark_mode",
-                        AppCompatDelegate.getDefaultNightMode()
-                                == AppCompatDelegate.MODE_NIGHT_YES);
+
+        boolean useNightModeDefault =
+                AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES;
+        if (mContext != null) {
+            int nightMode =
+                    mContext.getResources().getConfiguration().uiMode
+                            & Configuration.UI_MODE_NIGHT_MASK;
+            if (nightMode == Configuration.UI_MODE_NIGHT_YES) {
+                useNightModeDefault = true;
+            }
+        }
+
+        return getConfig().getBool("app", "dark_mode", useNightModeDefault);
     }
 
     public void enableDarkMode(boolean enable) {
@@ -1171,5 +1186,29 @@ public class LinphonePreferences {
 
     public void setVideoPreviewEnabled(boolean enabled) {
         getConfig().setBool("app", "video_preview", enabled);
+    }
+
+    public boolean shortcutsCreationEnabled() {
+        return getConfig().getBool("app", "shortcuts", false);
+    }
+
+    public void enableChatRoomsShortcuts(boolean enable) {
+        getConfig().setBool("app", "shortcuts", enable);
+    }
+
+    public boolean hideEmptyChatRooms() {
+        return getConfig().getBool("misc", "hide_empty_chat_rooms", true);
+    }
+
+    public void setHideEmptyChatRooms(boolean hide) {
+        getConfig().setBool("misc", "hide_empty_chat_rooms", hide);
+    }
+
+    public boolean hideRemovedProxiesChatRooms() {
+        return getConfig().getBool("misc", "hide_chat_rooms_from_removed_proxies", true);
+    }
+
+    public void setHideRemovedProxiesChatRooms(boolean hide) {
+        getConfig().setBool("misc", "hide_chat_rooms_from_removed_proxies", hide);
     }
 }
