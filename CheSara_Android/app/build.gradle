@@ -151,9 +151,12 @@ android {
 }
 
 dependencies {
-    if (firebaseEnabled()) {
-        implementation 'com.google.firebase:firebase-messaging:17.5.0'
-    }
+    implementation 'com.google.firebase:firebase-functions:18.1.0'
+    implementation 'com.google.firebase:firebase-messaging:19.0.0'
+    implementation 'com.google.firebase:firebase-core:17.0.0'
+    implementation 'com.google.firebase:firebase-storage:18.1.0'
+    implementation 'com.google.firebase:firebase-analytics:17.2.0'
+
     implementation 'androidx.recyclerview:recyclerview:1.0.0'
     implementation 'androidx.appcompat:appcompat:1.0.2'
     implementation 'com.google.android:flexbox:1.1.0'
@@ -171,9 +174,8 @@ dependencies {
         implementation "org.linphone:linphone-sdk-android:4.2+"
     }
 }
-if (firebaseEnabled()) {
+
     apply plugin: 'com.google.gms.google-services'
-}
 
 task generateContactsXml(type: Copy) {
     from 'contacts.xml'

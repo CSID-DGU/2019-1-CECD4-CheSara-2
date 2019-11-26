@@ -10,7 +10,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:49352111881:android:82a0ebbed63c0487a1c5d8",
         "android_client_info": {
-          "package_name": "org.linphone"
+          "package_name": "org.linphone.debug"
         }
       },
       "oauth_client": [
@@ -18,7 +18,7 @@
           "client_id": "49352111881-ff1te49v22vk2tlgmrs9vcpp1glm50o5.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "org.linphone",
+            "package_name": "org.linphone.debug",
             "certificate_hash": "21ac0162b0b932730f6b1e73bbd56c68e8a513be"
           }
         },

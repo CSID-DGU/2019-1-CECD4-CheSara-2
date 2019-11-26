@@ -21,20 +21,37 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import android.app.Fragment;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.ListResult;
+import com.google.firebase.storage.StorageReference;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import javax.net.ssl.HttpsURLConnection;
 import org.linphone.LinphoneManager;
 import org.linphone.R;
+import org.linphone.activities.AboutActivity;
 import org.linphone.call.CallActivity;
 import org.linphone.contacts.ContactsManager;
 import org.linphone.contacts.ContactsUpdatedListener;
@@ -63,6 +80,14 @@ public class ChatRoomsFragment extends Fragment
     private ChatRoomListenerStub mChatRoomListener;
     private SelectableHelper mSelectionHelper;
     private TextView mNoChatHistory;
+    ListView listView;
+    StorageReference listRef;
+    FirebaseStorage storage;
+    String itemValue;
+    InputStream inputStream;
+    StorageReference storageRef;
+    String data;
+    Uri aUri;
 
     @Override
     public View onCreateView(
@@ -235,6 +260,259 @@ public class ChatRoomsFragment extends Fragment
         ProxyConfig lpc = core.getDefaultProxyConfig();
         mNewGroupDiscussionButton.setVisibility(
                 (lpc != null && lpc.getConferenceFactoryUri() != null) ? View.VISIBLE : View.GONE);
+
+        listView = (ListView) getActivity().findViewById(R.id.filelist);
+        storage = FirebaseStorage.getInstance("gs://mvoipcall-cc6e3.appspot.com");
+        listRef = storage.getReference();
+
+        final ArrayList<String> fileList = new ArrayList<String>();
+        // Now we get the references of these images
+        listRef.listAll()
+                .addOnSuccessListener(
+                        new OnSuccessListener<ListResult>() {
+                            @Override
+                            public void onSuccess(ListResult result) {
+                                for (StorageReference fileRef : result.getItems()) {
+                                    if (fileRef.getName().contains(".txt")) {
+                                        fileList.add(fileRef.getName());
+                                    }
+                                }
+                                ArrayAdapter<String> adapter =
+                                        new ArrayAdapter<String>(
+                                                getActivity(),
+                                                android.R.layout.simple_list_item_1,
+                                                android.R.id.text1,
+                                                fileList);
+
+                                // Assign adapter to ListView
+                                listView.setAdapter(adapter);
+
+                                // ListView Item Click Listener
+                                listView.setOnItemClickListener(
+                                        new AdapterView.OnItemClickListener() {
+
+                                            @Override
+                                            public void onItemClick(
+                                                    AdapterView<?> parent,
+                                                    View view,
+                                                    int position,
+                                                    long id) {
+                                                int itemPosition = position;
+                                                itemValue =
+                                                        (String)
+                                                                listView.getItemAtPosition(
+                                                                        position);
+
+                                                storageRef = listRef.child(itemValue);
+                                                storageRef
+                                                        .getDownloadUrl()
+                                                        .addOnSuccessListener(
+                                                                new OnSuccessListener<Uri>() {
+
+                                                                    @Override
+                                                                    public void onSuccess(Uri uri) {
+
+                                                                        //
+                                                                        //                      try{
+                                                                        //
+                                                                        //
+                                                                        // inputStream = new
+                                                                        // FileInputStream(new
+                                                                        // File(uri.getPath()));
+                                                                        //
+                                                                        //
+                                                                        //
+                                                                        // ByteArrayOutputStream
+                                                                        // byteArrayOutputStream =
+                                                                        // new
+                                                                        // ByteArrayOutputStream();
+                                                                        //
+                                                                        //
+                                                                        //
+                                                                        // int i;
+                                                                        //
+                                                                        //
+                                                                        // try {
+                                                                        //
+                                                                        //
+                                                                        //
+                                                                        //    i =
+                                                                        // inputStream.read();
+                                                                        //
+                                                                        //
+                                                                        //    while (i != -1) {
+                                                                        //
+                                                                        //
+                                                                        //
+                                                                        // byteArrayOutputStream.write(i);
+                                                                        //
+                                                                        //
+                                                                        //        i =
+                                                                        // inputStream.read();
+                                                                        //
+                                                                        //
+                                                                        //    }
+                                                                        //
+                                                                        //
+                                                                        //
+                                                                        //    data = new
+                                                                        // String(byteArrayOutputStream.toByteArray(), "UTF-8");
+                                                                        //
+                                                                        //
+                                                                        //    inputStream.close();
+                                                                        //
+                                                                        //
+                                                                        // } catch (IOException e) {
+                                                                        //
+                                                                        //
+                                                                        //    e.printStackTrace();
+                                                                        //
+                                                                        //
+                                                                        // }
+                                                                        //
+                                                                        //
+                                                                        //
+                                                                        // Log.d("뭘까", data);
+                                                                        ////
+                                                                        //
+                                                                        // Intent intent = new
+                                                                        // Intent(getActivity(),
+                                                                        // AboutActivity.class);
+                                                                        ////
+                                                                        //
+                                                                        // intent.putExtra("filename", itemValue);
+                                                                        ////
+                                                                        //
+                                                                        // intent.putExtra("content", data);
+                                                                        ////
+                                                                        //
+                                                                        // startActivity(intent);
+                                                                        //
+                                                                        //
+                                                                        //
+                                                                        //
+                                                                        // }catch (IOException e){}
+
+                                                                        aUri = uri;
+                                                                        new Thread(
+                                                                                        new Runnable() {
+                                                                                            @Override
+                                                                                            public
+                                                                                            void
+                                                                                                    run() {
+                                                                                                try {
+
+                                                                                                    URL
+                                                                                                            url =
+                                                                                                                    new URL(
+                                                                                                                            aUri
+                                                                                                                                    .toString()); // my app link change it
+
+                                                                                                    HttpsURLConnection
+                                                                                                            uc =
+                                                                                                                    (HttpsURLConnection)
+                                                                                                                            url
+                                                                                                                                    .openConnection();
+                                                                                                    //                                                            BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream(), "utf-8"));
+                                                                                                    //                                                            String line;
+                                                                                                    //                                                            StringBuilder lin2 = new StringBuilder();
+                                                                                                    //                                                            while ((line = br.readLine()) != null)
+                                                                                                    //                                                            {
+                                                                                                    //                                                              Log.d("wweew", line);
+                                                                                                    //                                                                lin2.append(line);
+                                                                                                    //                                                            }
+
+                                                                                                    //                                                            BufferedReader inputStream = new BufferedReader(new InputStreamReader(uc.getInputStream(), "UTF-8"));
+                                                                                                    InputStream
+                                                                                                            inputStream =
+                                                                                                                    uc
+                                                                                                                            .getInputStream();
+                                                                                                    ByteArrayOutputStream
+                                                                                                            byteArrayOutputStream =
+                                                                                                                    new ByteArrayOutputStream();
+
+                                                                                                    int
+                                                                                                            i;
+                                                                                                    data =
+                                                                                                            null;
+                                                                                                    try {
+                                                                                                        i =
+                                                                                                                inputStream
+                                                                                                                        .read();
+                                                                                                        while (i
+                                                                                                                != -1) {
+                                                                                                            byteArrayOutputStream
+                                                                                                                    .write(
+                                                                                                                            i);
+                                                                                                            i =
+                                                                                                                    inputStream
+                                                                                                                            .read();
+                                                                                                        }
+
+                                                                                                        data =
+                                                                                                                new String(
+                                                                                                                        byteArrayOutputStream
+                                                                                                                                .toByteArray(),
+                                                                                                                        "EUC-KR");
+                                                                                                        inputStream
+                                                                                                                .close();
+                                                                                                    } catch (
+                                                                                                            IOException
+                                                                                                                    e) {
+                                                                                                        e
+                                                                                                                .printStackTrace();
+                                                                                                    }
+
+                                                                                                    Intent
+                                                                                                            intent =
+                                                                                                                    new Intent(
+                                                                                                                            getActivity(),
+                                                                                                                            AboutActivity
+                                                                                                                                    .class);
+                                                                                                    intent
+                                                                                                            .putExtra(
+                                                                                                                    "filename",
+                                                                                                                    itemValue);
+                                                                                                    intent
+                                                                                                            .putExtra(
+                                                                                                                    "content",
+                                                                                                                    data);
+                                                                                                    //                                                            intent.putExtra("content", lin2.toString());
+                                                                                                    startActivity(
+                                                                                                            intent);
+
+                                                                                                } catch (
+                                                                                                        IOException
+                                                                                                                e) {
+                                                                                                    e
+                                                                                                            .printStackTrace();
+                                                                                                }
+                                                                                            }
+                                                                                        })
+                                                                                .start();
+                                                                    }
+                                                                })
+                                                        .addOnFailureListener(
+                                                                new OnFailureListener() {
+                                                                    @Override
+                                                                    public void onFailure(
+                                                                            @NonNull
+                                                                                    Exception
+                                                                                            exception) {
+                                                                        // Handle any errors
+                                                                    }
+                                                                });
+                                            }
+                                        });
+                            }
+                        })
+                .addOnFailureListener(
+                        new OnFailureListener() {
+                            @Override
+                            public void onFailure(Exception exception) {
+                                // Handle any errors
+                            }
+                        });
     }
 
     @Override
@@ -286,8 +564,29 @@ public class ChatRoomsFragment extends Fragment
     }
 
     private void refreshChatRoomsList() {
-        mChatRoomsAdapter.refresh();
-        mNoChatHistory.setVisibility(
-                mChatRoomsAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+        //        mChatRoomsAdapter.refresh();
+        //        mNoChatHistory.setVisibility(
+        //                mChatRoomsAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    public String getString(byte[] input) {
+
+        StringBuffer rtn = new StringBuffer();
+
+        for (int i = 0; i < input.length; ) {
+            if ((input[i] & 0x80) == 0x80) {
+
+                byte[] hangle = new byte[2];
+
+                hangle[0] = input[i];
+
+                hangle[1] = input[++i];
+
+                rtn.append(new String(hangle));
+
+            } else rtn.append((char) input[i]);
+            ++i;
+        }
+        return rtn.toString();
     }
 }

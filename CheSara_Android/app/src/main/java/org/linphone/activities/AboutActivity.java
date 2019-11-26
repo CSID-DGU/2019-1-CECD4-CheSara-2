@@ -1,30 +1,11 @@
 package org.linphone.activities;
 
-/*
-AboutActivity.java
-Copyright (C) 2019 Belledonne Communications, Grenoble, France
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
-
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,24 +14,24 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.core.content.ContextCompat;
-import org.linphone.BuildConfig;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
 import org.linphone.LinphoneManager;
 import org.linphone.R;
 import org.linphone.core.Core;
 import org.linphone.core.CoreListenerStub;
-import org.linphone.settings.LinphonePreferences;
 
 public class AboutActivity extends MainActivity {
     private CoreListenerStub mListener;
     private ProgressDialog mProgress;
     private boolean mUploadInProgress;
+    String content;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (mAbortCreation) {
-            return;
-        }
 
         mOnBackPressGoHome = false;
         mAlwaysHideTabBar = true;
@@ -68,73 +49,74 @@ public class AboutActivity extends MainActivity {
         }
 
         TextView aboutVersion = findViewById(R.id.about_android_version);
-        TextView aboutLiblinphoneVersion = findViewById(R.id.about_liblinphone_sdk_version);
-        aboutLiblinphoneVersion.setText(
-                String.format(
-                        getString(R.string.about_liblinphone_sdk_version),
-                        getString(R.string.linphone_sdk_version)
-                                + " ("
-                                + getString(R.string.linphone_sdk_branch)
-                                + ")"));
-        // We can't access a library's BuildConfig, so we have to set it as a resource
-        aboutVersion.setText(
-                String.format(
-                        getString(R.string.about_version),
-                        BuildConfig.VERSION_NAME + " (" + BuildConfig.BUILD_TYPE + ")"));
+
+        Intent intent = getIntent(); /*데이터 수신*/
+        content = intent.getExtras().getString("content");
 
         TextView privacyPolicy = findViewById(R.id.privacy_policy_link);
-        privacyPolicy.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        Intent browserIntent =
-                                new Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse(getString(R.string.about_privacy_policy_link)));
-                        startActivity(browserIntent);
-                    }
-                });
+        privacyPolicy.setText(content);
 
-        TextView license = findViewById(R.id.about_text);
-        license.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        Intent browserIntent =
-                                new Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse(getString(R.string.about_license_link)));
-                        startActivity(browserIntent);
-                    }
-                });
+        Button btnRegist = aboutView.findViewById(R.id.btnRegist);
 
-        Button sendLogs = findViewById(R.id.send_log);
-        sendLogs.setOnClickListener(
+        btnRegist.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        Core core = LinphoneManager.getCore();
-                        if (core != null) {
-                            core.uploadLogCollection();
+                        Calendar cal = Calendar.getInstance();
+
+                        String cplace = content.split("장소 : ")[1].split("에서")[0];
+                        String chour = content.split("시간 : ")[1].split("시")[0];
+                        String cday = content.split("날짜 : ")[1].split("일")[0];
+
+                        Date currentTime = Calendar.getInstance().getTime();
+                        SimpleDateFormat weekdayFormat =
+                                new SimpleDateFormat("EE", Locale.getDefault());
+                        SimpleDateFormat dayFormat =
+                                new SimpleDateFormat("dd", Locale.getDefault());
+                        SimpleDateFormat monthFormat =
+                                new SimpleDateFormat("MM", Locale.getDefault());
+                        SimpleDateFormat yearFormat =
+                                new SimpleDateFormat("yyyy", Locale.getDefault());
+
+                        String year = yearFormat.format(currentTime);
+                        String month = monthFormat.format(currentTime);
+                        String day = dayFormat.format(currentTime);
+                        Log.d("year", year);
+                        Log.d("month", month);
+
+                        int cmonth;
+                        if (Integer.parseInt(day) > Integer.parseInt(cday)) {
+                            cmonth = Integer.parseInt(month);
+                        } else {
+                            cmonth = Integer.parseInt(month) - 1;
                         }
-                    }
-                });
-        sendLogs.setVisibility(
-                LinphonePreferences.instance().isDebugEnabled() ? View.VISIBLE : View.GONE);
+                        int cchour = Integer.parseInt(chour) + 12;
 
-        Button resetLogs = findViewById(R.id.reset_log);
-        resetLogs.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        Core core = LinphoneManager.getCore();
-                        if (core != null) {
-                            core.resetLogCollection();
-                        }
+                        cal.set(
+                                Integer.parseInt(year),
+                                cmonth,
+                                Integer.parseInt(cday),
+                                cchour,
+                                0,
+                                0);
+                        Intent intent2 = new Intent(Intent.ACTION_EDIT);
+                        intent2.setType("vnd.android.cursor.item/event");
+                        intent2.putExtra("beginTime", cal.getTimeInMillis());
+                        intent2.putExtra("allDay", false);
+
+                        cal.set(
+                                Integer.parseInt(year),
+                                cmonth,
+                                Integer.parseInt(cday),
+                                cchour + 1,
+                                0,
+                                0);
+
+                        intent2.putExtra("endTime", cal.getTimeInMillis());
+                        intent2.putExtra("title", cplace + "에서 약속");
+                        startActivity(intent2);
                     }
                 });
-        resetLogs.setVisibility(
-                LinphonePreferences.instance().isDebugEnabled() ? View.VISIBLE : View.GONE);
 
         mListener =
                 new CoreListenerStub() {
@@ -157,6 +139,24 @@ public class AboutActivity extends MainActivity {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+
+        Intent intent = getIntent(); /*데이터 수신*/
+        String fileName = intent.getExtras().getString("filename");
+
+        showTopBarWithTitle(fileName);
+        if (getResources().getBoolean(R.bool.hide_bottom_bar_on_second_level_views)) {
+            hideTabBar();
+        }
+
+        Core core = LinphoneManager.getCore();
+        if (core != null) {
+            core.addListener(mListener);
+        }
+    }
+
+    @Override
     public void onPause() {
         Core core = LinphoneManager.getCore();
         if (core != null) {
@@ -167,18 +167,11 @@ public class AboutActivity extends MainActivity {
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
+    protected void onDestroy() {
+        mListener = null;
+        mProgress = null;
 
-        showTopBarWithTitle(getString(R.string.about));
-        if (getResources().getBoolean(R.bool.hide_bottom_bar_on_second_level_views)) {
-            hideTabBar();
-        }
-
-        Core core = LinphoneManager.getCore();
-        if (core != null) {
-            core.addListener(mListener);
-        }
+        super.onDestroy();
     }
 
     private void displayUploadLogsInProgress() {
